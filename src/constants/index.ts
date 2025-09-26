@@ -1,0 +1,21 @@
+export const CATEGORIES = [
+  'All',
+  'Wedding Planner',
+  'Emcee',
+  'Decorator',
+  'Photographer',
+  'Cameraman',
+  'Catering',
+  'Venue',
+  'Band',
+  'Solo Artist',
+  'DJ',
+  'Florist',
+  'Makeup Artist',
+  'Suit Designer',
+  'Gown Designer',
+  'Bridesmaid Dresses',
+  'Best Man Suits',
+  'Accessories',
+  'Bar Services'
+] as const;
