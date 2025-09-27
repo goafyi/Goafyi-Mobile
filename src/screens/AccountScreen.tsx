@@ -9,6 +9,25 @@ import { StorageService } from '../services/storageService';
 import { PortfolioManager } from '../components/PortfolioManager';
 import { CATEGORIES } from '../constants';
 
+// Goa locations structure (same as in CategoryCarousel)
+const goaLocations = {
+  'North Goa': {
+    'Pernem Taluka': ['Mandrem', 'Arambol', 'Ashvem', 'Morjim', 'Pernem town', 'Tuem'],
+    'Bardez Taluka': ['Mapusa', 'Calangute', 'Candolim', 'Baga', 'Siolim', 'Anjuna', 'Vagator', 'Saligao', 'Parra', 'Aldona', 'Porvorim'],
+    'Tiswadi Taluka': ['Panaji (Panjim)', 'Taleigao (incl. Dona Paula)', 'Santa Cruz (Merces)', 'St. Andre (Goa Velha, Curca–Bambolim–Talaulim)', 'Cumbarjua', 'Old Goa'],
+    'Bicholim Taluka': ['Bicholim', 'Mayem'],
+    'Sattari Taluka': ['Valpoi', 'Poriem', 'Sanquelim (nearby)'],
+    'Ponda Taluka': ['Ponda', 'Priol (Mardol)', 'Marcaim', 'Shiroda']
+  },
+  'South Goa': {
+    'Salcete Taluka': ['Margao', 'Fatorda', 'Navelim', 'Benaulim', 'Colva', 'Varca', 'Orlim', 'Betalbatim', 'Sernabatim', 'Carmona', 'Cavelossim', 'Nuvem', 'Curtorim', 'Raia', 'Loutolim', 'Verna'],
+    'Mormugao Taluka': ['Vasco da Gama', 'Dabolim', 'Chicalim', 'Cortalim', 'Mormugao'],
+    'Quepem / Mining Belt': ['Quepem', 'Curchorem', 'Sanvordem'],
+    'Sanguem Taluka': ['Sanguem'],
+    'Canacona Taluka': ['Canacona (Chaudi)', 'Palolem', 'Agonda', 'Poinguinim']
+  }
+};
+
 interface AccountScreenProps {
   navigation?: any;
 }
@@ -34,10 +53,14 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
     instagram: '',
     businessName: '',
     category: '',
+    location: '',
   });
 
   // Business categories selection
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  
+  // Location picker state
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -50,6 +73,7 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
         instagram: '',
         businessName: '',
         category: '',
+        location: '',
       });
     }
   }, [user]);
@@ -81,6 +105,7 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
             phone: vendorData.contact_phone || '',
             facebook: vendorData.social_media?.facebook || '',
             instagram: vendorData.social_media?.instagram || '',
+            location: vendorData.location || '',
           };
           
           console.log('AccountScreen: Setting formData.phone to:', newFormData.phone);
@@ -122,6 +147,7 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
           business_name: formData.businessName,
           contact_phone: formData.phone || null,
           website: formData.website || null,
+          location: formData.location || null,
           social_media: {
             facebook: formData.facebook || null,
             instagram: formData.instagram || null
@@ -147,6 +173,7 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
             phone: updatedVendorData.contact_phone || '',
             facebook: updatedVendorData.social_media?.facebook || '',
             instagram: updatedVendorData.social_media?.instagram || '',
+            location: updatedVendorData.location || '',
           }));
           
           // Update selectedTypes as well
@@ -541,7 +568,7 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
               )}
 
               {/* Business Name */}
-              <Text style={styles.businessName}>
+              <Text style={!isEditing ? styles.businessNameView : styles.businessName}>
                 {vendor?.business_name || formData.businessName}
               </Text>
 
@@ -580,6 +607,10 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
                     <View style={styles.detailCard}>
                       <Text style={styles.detailLabel}>Owner Email</Text>
                       <Text style={styles.detailValue}>{formData.email}</Text>
+                    </View>
+                    <View style={styles.detailCard}>
+                      <Text style={styles.detailLabel}>Business Location</Text>
+                      <Text style={styles.detailValue}>{formData.location || '—'}</Text>
                     </View>
                   </View>
 
@@ -683,6 +714,17 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
                           />
                         </View>
                       </View>
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Business Location</Text>
+                        <TouchableOpacity
+                          style={styles.locationInput}
+                          onPress={() => setShowLocationPicker(true)}
+                        >
+                          <Text style={[styles.locationInputText, !formData.location && styles.locationInputPlaceholder]}>
+                            {formData.location || 'Select your business location'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
 
@@ -755,25 +797,6 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
                     </View>
                   </View>
 
-                  {/* Action Buttons */}
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      disabled={loading}
-                      onPress={() => setIsEditing(false)}
-                      style={styles.cancelButton}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      disabled={loading}
-                      onPress={handleSave}
-                      style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-                    >
-                      <Text style={styles.saveButtonText}>
-                        {loading ? 'Saving...' : 'Save Profile'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
                 </View>
               )}
             </View>
@@ -802,11 +825,91 @@ export default function AccountScreen({ navigation }: AccountScreenProps) {
           </View>
         )}
 
+        {/* Action Buttons - Only show when editing */}
+        {isEditing && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              disabled={loading}
+              onPress={() => setIsEditing(false)}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={loading}
+              onPress={handleSave}
+              style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            >
+              <Text style={styles.saveButtonText}>
+                {loading ? 'Saving...' : 'Save Profile'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Sign Out Button */}
         <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
           <LogOut size={20} color="#dc2626" />
           <Text style={styles.signOutButtonText}>Sign Out</Text>
         </TouchableOpacity>
+
+        {/* Simple Location Picker Modal */}
+        {showLocationPicker && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Location</Text>
+                <TouchableOpacity
+                  onPress={() => setShowLocationPicker(false)}
+                  style={styles.closeButton}
+                >
+                  <X size={24} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView 
+                style={styles.modalContent}
+                showsVerticalScrollIndicator={true}
+                bounces={true}
+                nestedScrollEnabled={true}
+              >
+                {Object.entries(goaLocations).map(([region, talukas]) => (
+                  <View key={region} style={styles.locationRegion}>
+                    <Text style={styles.locationRegionTitle}>{region}</Text>
+                    {Object.entries(talukas).map(([taluka, areas]) => (
+                      <View key={taluka} style={styles.locationTaluka}>
+                        <Text style={styles.locationTalukaTitle}>{taluka}</Text>
+                        <View style={styles.locationAreas}>
+                          {areas.map((area) => (
+                            <TouchableOpacity
+                              key={area}
+                              style={[
+                                styles.locationArea,
+                                formData.location === area && styles.locationAreaSelected
+                              ]}
+                              onPress={() => {
+                                setFormData(prev => ({ ...prev, location: area }));
+                                setShowLocationPicker(false);
+                              }}
+                            >
+                              <Text style={[
+                                styles.locationAreaText,
+                                formData.location === area && styles.locationAreaTextSelected
+                              ]}>
+                                {area}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        )}
+
       </View>
     </ScrollView>
   );
@@ -883,14 +986,26 @@ const styles = StyleSheet.create({
 
   // Vendor Styles
   vendorCard: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 16,
+    backgroundColor: 'white',
+    borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
   coverContainer: {
-    height: 144,
+    height: 160,
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   coverImage: {
     width: '100%',
@@ -900,26 +1015,40 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#be185d',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarOverlay: {
     position: 'absolute',
-    bottom: -40,
+    bottom: -50,
     left: '50%',
-    marginLeft: -40,
+    marginLeft: -50,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 100,
   },
   profileAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 4,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 5,
     borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   profilePictureActions: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16, // Space before business name
+    marginTop: 40,
     gap: 12,
   },
   changeProfileButton: {
@@ -948,38 +1077,66 @@ const styles = StyleSheet.create({
   },
   vendorContent: {
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 70,
+    marginTop: -40,
+    zIndex: 1,
   },
   businessName: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#111827',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    marginTop: 0,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 0.5,
   },
 
   // View Mode Styles
   viewMode: {
     gap: 16,
   },
+  businessNameView: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 20,
+    marginTop: 30,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 0.5,
+  },
   categoriesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
+    marginBottom: 20,
   },
   categoryBadge: {
-    backgroundColor: '#fce7f3',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#fbcfe8',
+    backgroundColor: '#be185d',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#a21caf',
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#be185d',
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   noCategoriesText: {
     fontSize: 14,
@@ -988,29 +1145,48 @@ const styles = StyleSheet.create({
   detailsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
+    marginBottom: 20,
   },
   detailCard: {
     flex: 1,
     minWidth: '30%',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   detailLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6b7280',
-    marginBottom: 4,
+    marginBottom: 6,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   detailValue: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#111827',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   detailCardClickable: {
     backgroundColor: '#f0f9ff',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#0ea5e9',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   detailValueClickable: {
     color: '#0ea5e9',
@@ -1065,29 +1241,49 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   section: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: 'white',
+    borderRadius: 16,
     padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#f1f5f9',
   },
   sectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#be185d',
-    marginRight: 8,
+    marginRight: 14,
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    letterSpacing: 0.3,
   },
   sectionContent: {
-    gap: 16,
+    gap: 12,
   },
   inputRow: {
     flexDirection: 'row',
@@ -1097,59 +1293,94 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   sectionInput: {
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: '#f9fafb',
     color: '#111827',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: -1,
+    borderTopColor: '#e5e7eb',
+    borderLeftColor: '#e5e7eb',
+    borderRightColor: '#f3f4f6',
+    borderBottomColor: '#f3f4f6',
   },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
+    justifyContent: 'space-between',
   },
   categoryOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
+    padding: 8,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    backgroundColor: 'white',
-    minWidth: '30%',
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    width: '30%',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   categoryOptionSelected: {
-    borderColor: '#10b981',
-    backgroundColor: '#f0fdf4',
+    borderColor: '#be185d',
+    backgroundColor: '#be185d',
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    transform: [{ scale: 1.02 }],
   },
   categoryOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#374151',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   categoryOptionTextSelected: {
-    color: '#059669',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   categorySelectedDot: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10b981',
+    top: 6,
+    right: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 
   // Common Input Styles
@@ -1192,19 +1423,31 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 16,
   },
   cancelButton: {
+    flex: 1,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: '#e2e8f0',
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
   cancelButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#374151',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   removeButton: {
     backgroundColor: '#dc2626',
@@ -1220,18 +1463,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   saveButton: {
+    flex: 1,
     backgroundColor: '#be185d',
     paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   saveButtonDisabled: {
     backgroundColor: '#d1d5db',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   signOutButton: {
     flexDirection: 'row',
@@ -1254,41 +1508,179 @@ const styles = StyleSheet.create({
   // Portfolio Management Styles
   portfolioCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
-    marginBottom: 24,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 12,
   },
   portfolioHeader: {
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#f1f5f9',
   },
   portfolioTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    letterSpacing: 0.3,
   },
   portfolioSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6b7280',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   cameraButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     backgroundColor: '#be185d',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 16,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: 'white',
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
+
+  // Simple Location Modal Styles
+  locationInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#f9fafb',
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: -1,
+    borderTopColor: '#e5e7eb',
+    borderLeftColor: '#e5e7eb',
+    borderRightColor: '#f3f4f6',
+    borderBottomColor: '#f3f4f6',
+  },
+  locationInputText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  locationInputPlaceholder: {
+    color: '#9ca3af',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    zIndex: 1000,
+    paddingTop: 200,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: '100%',
+    height: 500,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  closeButton: {
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+  },
+  modalContent: {
+    height: 400,
+    paddingBottom: 16,
+  },
+  locationRegion: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  locationRegionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+    paddingTop: 12,
+  },
+  locationTaluka: {
+    marginBottom: 12,
+  },
+  locationTalukaTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  locationAreas: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  locationArea: {
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  locationAreaSelected: {
+    backgroundColor: '#be185d',
+    borderColor: '#be185d',
+  },
+  locationAreaText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  locationAreaTextSelected: {
+    color: 'white',
+  },
+
 });

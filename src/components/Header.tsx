@@ -40,59 +40,6 @@ export function Header({ currentRoute = 'home', onNavigate }: HeaderProps) {
             <Image source={require('../../assets/logo.png')} style={styles.logo} />
           </TouchableOpacity>
 
-          {/* Desktop Navigation - Hidden on mobile */}
-          <View style={styles.desktopNav}>
-            {user?.role === 'viewer' ? (
-              <>
-                <TouchableOpacity
-                  onPress={() => onNavigate?.('home')}
-                  style={[styles.navButton, isActive('home') && styles.navButtonActive]}
-                >
-                  <Text style={[styles.navText, isActive('home') && styles.navTextActive]}>
-                    Home
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => onNavigate?.('account')}
-                  style={[styles.navButton, isActive('account') && styles.navButtonActive]}
-                >
-                  <Text style={[styles.navText, isActive('account') && styles.navTextActive]}>
-                    Profile
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : user?.role === 'vendor' ? (
-              <>
-                <TouchableOpacity
-                  onPress={() => onNavigate?.('account')}
-                  style={[styles.navButton, isActive('account') && styles.navButtonActive]}
-                >
-                  <Text style={[styles.navText, isActive('account') && styles.navTextActive]}>
-                    Dashboard
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : !isLandingPage ? (
-              <>
-                <TouchableOpacity
-                  onPress={() => onNavigate?.('home')}
-                  style={[styles.navButton, isActive('home') && styles.navButtonActive]}
-                >
-                  <Text style={[styles.navText, isActive('home') && styles.navTextActive]}>
-                    Home
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => onNavigate?.('search')}
-                  style={[styles.navButton, isActive('search') && styles.navButtonActive]}
-                >
-                  <Text style={[styles.navText, isActive('search') && styles.navTextActive]}>
-                    Search
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : null}
-          </View>
 
           {/* Mobile Menu Button */}
           <View style={styles.mobileMenuContainer}>
@@ -110,7 +57,7 @@ export function Header({ currentRoute = 'home', onNavigate }: HeaderProps) {
                     />
                   ) : (
                     <View style={styles.profileIconContainer}>
-                      <User size={16} color="#be185d" />
+                      <User size={14} color="#be185d" />
                     </View>
                   )}
                 </View>
@@ -127,17 +74,6 @@ export function Header({ currentRoute = 'home', onNavigate }: HeaderProps) {
           </View>
         </View>
 
-        {/* Sign In Button for non-authenticated users - Desktop only */}
-        {!user && (
-          <View style={styles.signInButtonContainer}>
-            <TouchableOpacity
-              onPress={() => onNavigate?.('login')}
-              style={styles.signInButton}
-            >
-              <Text style={styles.signInButtonText}>Sign In</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       {/* Mobile Menu Modal */}
@@ -202,6 +138,16 @@ export function Header({ currentRoute = 'home', onNavigate }: HeaderProps) {
                   </View>
                   
                   <TouchableOpacity
+                    onPress={() => handleNavigation('signup')}
+                    style={styles.simpleMenuItem}
+                  >
+                    <View style={styles.simpleMenuItemIcon}>
+                      <User size={20} color="#be185d" />
+                    </View>
+                    <Text style={styles.simpleMenuItemText}>Partner with us</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
                     onPress={() => handleNavigation('login')}
                     style={styles.simpleMenuItem}
                   >
@@ -222,53 +168,37 @@ export function Header({ currentRoute = 'home', onNavigate }: HeaderProps) {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 16,
+    borderBottomWidth: 3,
+    borderBottomColor: '#e5e7eb',
     position: 'relative',
+    borderWidth: 2,
+    borderColor: '#f3f4f6',
+    borderTopColor: '#ffffff',
+    borderLeftColor: '#ffffff',
+    borderRightColor: '#d1d5db',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 48,
+    height: 50,
     paddingHorizontal: 16,
+    paddingVertical: 6,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   logo: {
-    width: 96,
-    height: 96,
+    width: 80,
+    height: 80,
     resizeMode: 'contain',
-  },
-  desktopNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 24,
-    display: 'none', // Hidden on mobile
-  },
-  navButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  navButtonActive: {
-    // Active state styling
-  },
-  navText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  navTextActive: {
-    color: '#be185d',
   },
   mobileMenuContainer: {
     flexDirection: 'row',
@@ -278,17 +208,17 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   profilePicture: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
     borderWidth: 2,
-    borderColor: '#fce7f3',
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
   profileImage: {
     width: '100%',
@@ -303,29 +233,15 @@ const styles = StyleSheet.create({
   },
   hamburgerButton: {
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  signInButtonContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 16,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    display: 'none', // Hidden on mobile
-  },
-  signInButton: {
-    backgroundColor: '#be185d',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  signInButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+    borderColor: 'rgba(229, 231, 235, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -500,7 +416,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   landingMenuContent: {
-    gap: 16,
+    // gap removed - use marginBottom on child elements instead
   },
   welcomeSection: {
     alignItems: 'center',
@@ -551,7 +467,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#e5e7eb',
   },
   authButtonsContainer: {
-    gap: 12,
+    // gap removed - use marginBottom on child elements instead
   },
   partnerButton: {
     width: '100%',
@@ -591,12 +507,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   userSection: {
-    gap: 12,
+    // gap removed - use marginBottom on child elements instead
   },
   userProfileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },

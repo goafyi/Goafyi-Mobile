@@ -7,6 +7,7 @@ import { AvailabilityService, type AvailabilitySettingsRecord, type BlockedDateR
 import { PackageService, type PackageRecord } from '../services/packageService';
 import { BookingService, type BookingWithDetails } from '../services/bookingService';
 import { AuthService } from '../services/authService';
+import { VendorService } from '../services/vendorService';
 
 interface VendorAvailabilityScreenProps {
   navigation?: any;
@@ -27,6 +28,42 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [bookingsByDate, setBookingsByDate] = useState<Record<string, BookingWithDetails[]>>({});
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  
+  // Load availability enabled state from database
+  useEffect(() => {
+    const loadAvailabilityState = async () => {
+      if (!vendorId) return;
+      
+      try {
+        const vendor = await VendorService.getVendorByUserIdCachedFirst(vendorId);
+        if (vendor) {
+          setAvailabilityEnabled(vendor.availability_enabled ?? true);
+        }
+      } catch (error) {
+        console.error('Error loading availability state:', error);
+      }
+    };
+    
+    loadAvailabilityState();
+  }, [vendorId]);
+  
+  // Save availability toggle state to database
+  const handleAvailabilityToggle = async (enabled: boolean) => {
+    if (!vendorId) return;
+    
+    setSavingAvailability(true);
+    try {
+      await VendorService.updateVendor(vendorId, { availability_enabled: enabled });
+      setAvailabilityEnabled(enabled);
+    } catch (error) {
+      console.error('Error updating availability state:', error);
+      Alert.alert('Error', 'Failed to update availability setting');
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
   
   // Packages state
   const [packages, setPackages] = useState<(PackageRecord & { package_extras: any[] })[]>([]);
@@ -556,6 +593,27 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
 
           {activeTab === 'availability' && (
             <View style={styles.availabilitySection}>
+              {/* Availability Toggle */}
+              <View style={styles.availabilityToggleSection}>
+                <View style={styles.toggleContainer}>
+                  <View style={styles.toggleInfo}>
+                    <Text style={styles.toggleTitle}>Enable Availability for Viewers</Text>
+                    <Text style={styles.toggleSubtitle}>
+                      When enabled, viewers can see your availability and book services
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.toggleSwitch, availabilityEnabled && styles.toggleSwitchActive]}
+                    onPress={() => handleAvailabilityToggle(!availabilityEnabled)}
+                    disabled={savingAvailability}
+                  >
+                    <View style={[styles.toggleThumb, availabilityEnabled && styles.toggleThumbActive]} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {availabilityEnabled ? (
+                <>
                   {/* Calendar */}
                   <View style={styles.calendarSection}>
                     {renderCalendar()}
@@ -615,6 +673,19 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
                   </View>
                 )}
               </View>
+                </>
+              ) : (
+                <View style={styles.availabilityDisabledSection}>
+                  <Calendar size={64} color="#9ca3af" />
+                  <Text style={styles.disabledTitle}>Availability Disabled</Text>
+                  <Text style={styles.disabledSubtitle}>
+                    Viewers cannot see your availability or book services when disabled
+                  </Text>
+                  <Text style={styles.disabledNote}>
+                    Toggle the switch above to enable availability for viewers
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
@@ -956,6 +1027,7 @@ const styles = StyleSheet.create({
   // Packages Section
   packagesSection: {
     gap: 16,
+    paddingBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1105,6 +1177,100 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
+  // Availability Toggle Section
+  availabilityToggleSection: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  toggleTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  toggleSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    lineHeight: 20,
+  },
+  toggleSwitch: {
+    width: 52,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#e5e7eb',
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#be185d',
+  },
+  toggleThumb: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  toggleThumbActive: {
+    transform: [{ translateX: 20 }],
+  },
+  availabilityDisabledSection: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  disabledTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  disabledSubtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  disabledNote: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+
   // Availability Section
   availabilitySection: {
     gap: 16,
@@ -1331,6 +1497,7 @@ const styles = StyleSheet.create({
   },
   blockedDatesSection: {
     marginBottom: 24,
+    paddingBottom: 100, // Add padding to go above bottom navigation
   },
   blockedDatesList: {
     gap: 8,

@@ -80,3 +80,4 @@ export class AvailabilityService {
     if (error) throw error
   }
 }
+

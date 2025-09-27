@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, StyleSheet } from 'react-native';
 import { Search, MapPin, Star } from 'lucide-react-native';
 import { useSupabase } from '../context/SupabaseContext';
 import { VendorService, VendorWithUser } from '../services/vendorService';
@@ -65,18 +65,30 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View style={styles.container}>
       {/* Header */}
-      <View className="bg-white px-4 py-3 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900 mb-2">
-          Welcome{user?.full_name ? `, ${user.full_name}` : ''}!
-        </Text>
+      <View style={styles.headerContainer}>
+        <View style={styles.welcomeSection}>
+          <View style={styles.welcomeTextContainer}>
+            <Text style={styles.welcomeSubtext}>
+              Welcome back
+            </Text>
+            <Text style={styles.welcomeName}>
+              {user?.full_name || 'User'}
+            </Text>
+          </View>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+            </Text>
+          </View>
+        </View>
         
         {/* Search Bar */}
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
+        <View style={styles.searchContainer}>
           <Search size={20} color="#6b7280" />
           <TextInput
-            className="flex-1 ml-2 text-gray-900"
+            style={styles.searchInput}
             placeholder="Search vendors..."
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -88,7 +100,7 @@ export default function HomeScreen() {
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
-        className="bg-white border-b border-gray-200"
+        style={styles.categoriesContainer}
       >
         <View className="flex-row px-4 py-2">
           {CATEGORIES.map((category) => (
@@ -132,3 +144,78 @@ export default function HomeScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  headerContainer: {
+    backgroundColor: 'white',
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#111827',
+  },
+  categoriesContainer: {
+    backgroundColor: 'transparent',
+  },
+  welcomeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  welcomeTextContainer: {
+    flex: 1,
+  },
+  welcomeSubtext: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  welcomeName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#be185d',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  avatarText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 18,
+  },
+});

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Alert, Modal, TextInput, ActivityIndicator, Linking } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Alert, Modal, TextInput, ActivityIndicator, Linking, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, Calendar, Heart, Share2, X, Globe, DollarSign, Instagram, Play, MessageSquare, ChevronDown, ChevronUp, Send } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
@@ -49,7 +49,20 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
   const [vendor, setVendor] = useState<VendorWithUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Animation values
+  const profilePictureScale = useRef(new Animated.Value(1)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(false);
+  
+  // Load availability enabled state from vendor data
+  useEffect(() => {
+    if (vendor) {
+      setAvailabilityEnabled(vendor.availability_enabled ?? true);
+    }
+  }, [vendor]);
 
   // Helper function to extract YouTube video ID
   const extractYouTubeVideoId = (url: string): string | null => {
@@ -110,6 +123,13 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
         const vendorData = await VendorService.getVendorByIdCachedFirst(vendorId);
         console.log('Vendor data loaded:', vendorData);
         setVendor(vendorData);
+        
+        // Animate card appearance
+        Animated.timing(cardOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }).start();
         
         if (vendorData) {
           // Load additional data in parallel
@@ -280,7 +300,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
         review_text: reviewText.trim() || undefined
       };
 
-      const result = await RatingService.submitRating(vendorId, user.id, ratingData);
+      const result = await RatingService.submitRating(vendorId, user!.id, ratingData);
       if (result) {
         setUserRating(result);
         Alert.alert('Success', 'Rating submitted successfully!');
@@ -345,7 +365,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
   };
 
   const handleInstagramContact = () => {
-    if (!vendor.social_media?.instagram) {
+    if (!vendor?.social_media?.instagram) {
       Alert.alert('No Instagram', 'This vendor has not provided an Instagram handle.');
       return;
     }
@@ -366,7 +386,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
         {
           text: 'Open Instagram',
           onPress: () => {
-            const instagramUrl = `https://instagram.com/${vendor.social_media.instagram}`;
+            const instagramUrl = `https://instagram.com/${vendor.social_media!.instagram}`;
             Linking.openURL(instagramUrl).catch(() => {
               Alert.alert('Error', 'Could not open Instagram. Please try again.');
             });
@@ -400,6 +420,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
       console.log('Loaded packages:', packagesData);
       const mappedPackages = (packagesData || []).map((p: any) => ({
         id: p.id,
+        vendor_id: vendor.id,
         title: p.title,
         pricing_type: p.pricing_type,
         price: p.price ?? undefined,
@@ -408,7 +429,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
         duration_label: p.duration_label ?? '',
         deliverables: p.deliverables ?? [],
         terms: p.terms ?? '',
-        extras: (p.package_extras || []).map((ex: any) => ({
+        package_extras: (p.package_extras || []).map((ex: any) => ({
           name: ex.name,
           available_qty: ex.available_qty ?? undefined,
           price_per_unit: ex.price_per_unit ?? undefined
@@ -548,32 +569,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
     );
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#be185d" />
-          <Text style={styles.loadingText}>Loading vendor profile...</Text>
-        </View>
-      </View>
-    );
-  }
 
-  if (error || !vendor) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error || 'Vendor not found'}</Text>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation?.goBack()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   const renderStars = (rating: number, size: 'sm' | 'md' | 'lg' = 'md') => {
     const sizeMap = {
@@ -597,17 +593,38 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
   };
 
   if (loading) {
+    console.log('VendorProfileScreen: Showing loading state');
+    return (
+      <View style={[styles.loadingContainer, { paddingTop: 0 }]}>
+        <Image source={require('../../assets/logo.png')} style={styles.loadingLogo} />
+        <Text style={styles.loadingText}>Loading vendor profile...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    console.log('VendorProfileScreen: Showing error state:', error);
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#be185d" />
-          <Text style={styles.loadingText}>Loading vendor profile...</Text>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIconContainer}>
+            <MapPin size={48} color="#9ca3af" />
+          </View>
+          <Text style={styles.errorTitle}>Error</Text>
+          <Text style={styles.errorSubtitle}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation?.goBack()}
+          >
+            <Text style={styles.backButtonText}>Back to Home</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  if (error || !vendor) {
+  if (!vendor) {
+    console.log('VendorProfileScreen: Showing no vendor state');
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
@@ -615,7 +632,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
             <MapPin size={48} color="#9ca3af" />
           </View>
           <Text style={styles.errorTitle}>Vendor not found</Text>
-          <Text style={styles.errorSubtitle}>{error || 'This vendor profile could not be found.'}</Text>
+          <Text style={styles.errorSubtitle}>This vendor profile could not be found.</Text>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation?.goBack()}
@@ -633,8 +650,10 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
   
   const profileImage = ImageService.getProfilePictureUrl(vendor.user?.avatar_url);
 
+  console.log('VendorProfileScreen: Rendering main content, vendor:', !!vendor, 'loading:', loading, 'error:', error);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: 0 }]}>
       <ScrollView style={[styles.scrollView, { paddingBottom: 300 }]} showsVerticalScrollIndicator={false}>
         {/* Cover Photo with back button */}
         <View style={styles.coverContainer}>
@@ -656,10 +675,18 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.profileCard}>
+          <Animated.View style={[styles.profileCard, { opacity: cardOpacity }]}>
             {/* Profile Picture */}
             <View style={styles.profilePictureContainer}>
-              <View style={styles.profilePicture}>
+              <Animated.View 
+                style={[
+                  styles.profilePicture,
+                  {
+                    transform: [{ scale: profilePictureScale }],
+                    opacity: cardOpacity,
+                  }
+                ]}
+              >
                 {vendor.user?.avatar_url ? (
                   <Image
                     source={{ uri: ImageService.getProfilePictureUrl(vendor.user.avatar_url) }}
@@ -673,7 +700,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                     </Text>
                   </View>
                 )}
-              </View>
+              </Animated.View>
               <Text style={styles.businessName}>
                 {vendor.business_name}
               </Text>
@@ -735,7 +762,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                 <TouchableOpacity 
                   style={styles.websiteBadge}
                   onPress={() => {
-                    const url = vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`;
+                    const url = vendor.website!.startsWith('http') ? vendor.website! : `https://${vendor.website!}`;
                     Linking.openURL(url);
                   }}
                 >
@@ -747,73 +774,96 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
 
             {/* Contact Information */}
             <View style={styles.contactInfo}>
-              {vendor.user?.email && (
-                <View style={styles.contactItem}>
-                  <Mail size={20} color="#9ca3af" />
-                  <Text style={styles.contactText}>{vendor.user.email}</Text>
+              {vendor.contact_email && (
+                <View style={styles.contactCard}>
+                  <View style={styles.contactIconContainer}>
+                    <Mail size={18} color="white" />
+                  </View>
+                  <View style={styles.contactDetails}>
+                    <Text style={styles.contactLabel}>Email</Text>
+                    <Text style={styles.contactValue}>{vendor.contact_email}</Text>
+                  </View>
                 </View>
               )}
               
-              
-            </View>
-
-            {/* WhatsApp & Instagram Buttons */}
-            <View style={styles.placeholderButtonsContainer}>
               {vendor.contact_phone && (
-                <TouchableOpacity
-                  style={styles.whatsappPlaceholderButton}
-                  onPress={handleWhatsAppContact}
-                >
-                  <MessageSquare size={16} color="white" />
-                  <Text style={styles.placeholderButtonText}>WhatsApp</Text>
-                </TouchableOpacity>
-              )}
-              
-              {vendor.social_media?.instagram && (
-                <TouchableOpacity
-                  style={styles.instagramPlaceholderButton}
-                  onPress={handleInstagramContact}
-                >
-                  <Instagram size={16} color="white" />
-                  <Text style={styles.placeholderButtonText}>Instagram</Text>
-                </TouchableOpacity>
+                <View style={styles.contactCard}>
+                  <View style={styles.contactIconContainer}>
+                    <Phone size={18} color="white" />
+                  </View>
+                  <View style={styles.contactDetails}>
+                    <Text style={styles.contactLabel}>Phone</Text>
+                    <Text style={styles.contactValue}>{vendor.contact_phone}</Text>
+                  </View>
+                </View>
               )}
             </View>
 
-            {/* Availability & Pricing Button */}
-            <View style={styles.availabilityButtonContainer}>
+            {/* Instagram & WhatsApp Buttons */}
+            <View style={styles.placeholderButtonsContainer}>
+              {/* Instagram Button - Left side */}
               <TouchableOpacity
-                style={styles.availabilityButton}
-                onPress={() => {
-                  loadPackagesAndAvailability();
-                  setShowBookingModal(true);
-                }}
+                style={[
+                  styles.instagramPlaceholderButton,
+                  !vendor.social_media?.instagram && styles.disabledButton
+                ]}
+                onPress={vendor.social_media?.instagram ? handleInstagramContact : undefined}
+                disabled={!vendor.social_media?.instagram}
               >
-                <Calendar size={14} color="white" />
-                <DollarSign size={14} color="white" />
-                <Text style={styles.availabilityButtonText}>Availability & Pricing</Text>
+                <Instagram size={16} color="white" />
+                <Text style={styles.placeholderButtonText}>Instagram</Text>
+              </TouchableOpacity>
+              
+              {/* WhatsApp Button - Right side */}
+              <TouchableOpacity
+                style={[
+                  styles.whatsappPlaceholderButton,
+                  !vendor.contact_phone && styles.disabledButton
+                ]}
+                onPress={vendor.contact_phone ? handleWhatsAppContact : undefined}
+                disabled={!vendor.contact_phone}
+              >
+                <MessageSquare size={16} color="white" />
+                <Text style={styles.placeholderButtonText}>WhatsApp</Text>
               </TouchableOpacity>
             </View>
-          </View>
+
+            {/* Availability & Pricing Button - Only show if availability is enabled */}
+            {availabilityEnabled ? (
+              <View style={styles.availabilityButtonContainer}>
+                <TouchableOpacity
+                  style={styles.availabilityButton}
+                  onPress={() => {
+                    loadPackagesAndAvailability();
+                    setShowBookingModal(true);
+                  }}
+                >
+                  <Calendar size={14} color="white" />
+                  <DollarSign size={14} color="white" />
+                  <Text style={styles.availabilityButtonText}>Availability & Pricing</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.availabilityDisabledContainer}>
+                <Calendar size={20} color="#9ca3af" />
+                <Text style={styles.availabilityDisabledText}>Availability Currently Disabled</Text>
+                <Text style={styles.availabilityDisabledSubtext}>
+                  This vendor has temporarily disabled their availability
+                </Text>
+              </View>
+            )}
+          </Animated.View>
         </View>
 
         {/* Gallery - Photos & Videos */}
         {((vendor.portfolio_images && vendor.portfolio_images.length > 0) || (vendor.portfolio_videos && vendor.portfolio_videos.length > 0)) && (
           <View style={styles.gallerySection}>
             <View style={styles.galleryCard}>
-              <Text style={styles.galleryTitle}>Gallery - Photos & Videos</Text>
+              <Text style={styles.galleryTitle}>Portfolio</Text>
               
               {/* Photos Section */}
               {vendor.portfolio_images && vendor.portfolio_images.length > 0 && (
                 <View style={styles.photosSection}>
-                  <View style={styles.photosHeader}>
-                    <View style={styles.photosIconContainer}>
-                      <View style={styles.photosIcon}>
-                        <Text style={styles.photosIconText}>📷</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.photosTitle}>Photos ({vendor.portfolio_images.length})</Text>
-                  </View>
                   <View style={styles.photosGrid}>
                     {vendor.portfolio_images.map((src, idx) => (
                       <TouchableOpacity
@@ -829,6 +879,8 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                           style={styles.photoImage}
                           resizeMode="cover"
                         />
+                        {/* 3D Gradient Overlay */}
+                        <View style={styles.photoGradientOverlay} />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -838,12 +890,6 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
               {/* Videos Section */}
               {vendor.portfolio_videos && vendor.portfolio_videos.length > 0 && (
                 <View style={styles.videosSection}>
-                  <View style={styles.videosHeader}>
-                    <View style={styles.videosIconContainer}>
-                      <Text style={styles.videosIcon}>🎥</Text>
-                    </View>
-                    <Text style={styles.videosTitle}>Videos ({vendor.portfolio_videos.length})</Text>
-                  </View>
                   <View style={styles.videosList}>
                     {vendor.portfolio_videos.map((videoUrl, idx) => {
                       const videoId = extractYouTubeVideoId(videoUrl);
@@ -1206,7 +1252,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                 onPress={() => setShowRatingModal(false)}
                 style={styles.ratingModalCloseButton}
               >
-                <X size={24} color="#6b7280" />
+                <X size={20} color="#6b7280" />
               </TouchableOpacity>
             </View>
 
@@ -1222,7 +1268,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                       style={styles.starButton}
                     >
                       <Star
-                        size={40}
+                        size={32}
                         color={star <= currentRating ? '#fbbf24' : '#d1d5db'}
                         fill={star <= currentRating ? '#fbbf24' : 'transparent'}
                       />
@@ -1377,7 +1423,6 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                     onChangeText={(text) => setRequestForm(prev => ({ ...prev, numberOfPeople: text }))}
                     placeholder="Enter number of people"
                     keyboardType="numeric"
-                    required
                   />
                 </View>
               )}
@@ -1427,7 +1472,6 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
                     onChangeText={(text) => setRequestForm(prev => ({ ...prev, contactPhone: text }))}
                     placeholder="Enter your phone number"
                     keyboardType="phone-pad"
-                    required
                   />
                 </View>
               </View>
@@ -1473,10 +1517,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    backgroundColor: '#f9fafb',
+  },
+  loadingLogo: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+    marginBottom: 20,
   },
   loadingText: {
-    marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
   },
@@ -1507,11 +1556,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
+  errorText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
   backButton: {
     backgroundColor: '#be185d',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    // Enhanced 3D effects
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    // Add subtle border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   backButtonText: {
     color: 'white',
@@ -1553,36 +1616,40 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   profileCard: {
-    backgroundColor: '#f3f4f6', // bg-gray-100
-    borderRadius: 16, // rounded-2xl
+    backgroundColor: 'white',
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
     shadowRadius: 20,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb', // border-gray-200
-    padding: 24, // p-6
+    elevation: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 14, // Further reduced from 18
   },
   
   // Profile Picture Section
   profilePictureContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 14, // Further reduced from 18
   },
   profilePicture: {
-    width: 96, // w-24 h-24
-    height: 96,
-    borderRadius: 48, // rounded-full
-    marginTop: -48, // -mt-12
+    width: 140, // Even larger for more prominence
+    height: 140,
+    borderRadius: 70,
+    marginTop: -70,
+    // Much stronger 3D shadows
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 25,
+    // Thick border with gradient effect
+    borderWidth: 6,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
     overflow: 'hidden',
+    // Add rotation and scale for 3D effect
+    transform: [{ rotateY: '8deg' }, { scale: 1.05 }],
   },
   profileImage: {
     width: '100%',
@@ -1591,26 +1658,47 @@ const styles = StyleSheet.create({
   profileImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#ec4899', // bg-gradient-to-br from-rose-500 to-pink-600
+    backgroundColor: '#ec4899',
     alignItems: 'center',
     justifyContent: 'center',
+    // Enhanced 3D gradient effect
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    elevation: 8,
   },
   profileImageText: {
     color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '900',
+    // Add text shadow for 3D effect
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   businessName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827', // text-gray-900
-    marginTop: 16,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1f2937',
+    marginTop: 12, // Further reduced from 16
     textAlign: 'center',
+    // Add text shadow for depth
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    letterSpacing: 0.5,
   },
   fullName: {
-    fontSize: 16,
-    color: '#6b7280', // text-gray-600
+    fontSize: 18,
+    color: '#6b7280',
     textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 2, // Reduced from 4
+    // Add subtle text shadow
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   
   // Rating Section
@@ -1618,21 +1706,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
+    gap: 8, // Further reduced from 10
+    marginTop: 8, // Further reduced from 10
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    paddingHorizontal: 12, // Further reduced from 14
+    paddingVertical: 4, // Further reduced from 6
+    borderRadius: 20,
+    // Add subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   starsContainer: {
     flexDirection: 'row',
     gap: 2,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151', // text-gray-700
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f2937',
+    // Add text shadow for depth
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   ratingCount: {
-    fontSize: 12,
-    color: '#6b7280', // text-gray-500
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+    // Add subtle text shadow
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   
   // Categories Section
@@ -1640,22 +1747,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: 8, // Further reduced from 10
+    marginBottom: 12, // Further reduced from 16
+    marginTop: 4, // Further reduced from 6
   },
   categoryBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 12, // Further reduced from 14
+    paddingVertical: 4, // Further reduced from 6
+    borderRadius: 25,
+    // Enhanced 3D shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    // Add border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
+    // Add text shadow for depth
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   
   // Location and Website Section
@@ -1709,6 +1825,53 @@ const styles = StyleSheet.create({
   contactInfo: {
     gap: 16,
     marginBottom: 8,
+  },
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  contactIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#be185d',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  contactDetails: {
+    flex: 1,
+  },
+  contactLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  contactValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   contactItem: {
     flexDirection: 'row',
@@ -1805,11 +1968,12 @@ const styles = StyleSheet.create({
   // WhatsApp & Instagram Buttons
   placeholderButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 12, // Equal gap between buttons
+    alignItems: 'center',
     marginBottom: 12,
   },
   whatsappPlaceholderButton: {
-    flex: 1,
+    flex: 1, // Equal size with Instagram
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1825,15 +1989,15 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   instagramPlaceholderButton: {
-    flex: 1,
+    flex: 1, // Equal size with WhatsApp
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#e4405f',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 12, // Match WhatsApp padding
+    paddingHorizontal: 16, // Match WhatsApp padding
     borderRadius: 8,
-    gap: 6,
+    gap: 6, // Match WhatsApp gap
     shadowColor: '#e4405f',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1845,6 +2009,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  disabledButton: {
+    backgroundColor: '#d1d5db', // Gray background when disabled
+    shadowOpacity: 0, // Remove shadow when disabled
+    elevation: 0, // Remove elevation when disabled
+    opacity: 0.6, // Make it semi-transparent
+  },
   
   availabilityButtonContainer: {
     marginBottom: 0,
@@ -1854,121 +2024,182 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#2563eb', // bg-blue-600
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 16, // Increased from 6
+    paddingHorizontal: 24, // Increased from 12
+    borderRadius: 12, // Increased from 8
+    gap: 12, // Increased from 8
     shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 }, // Increased shadow
+    shadowOpacity: 0.4, // Increased shadow opacity
+    shadowRadius: 12, // Increased shadow radius
+    elevation: 6, // Increased elevation
   },
   availabilityButtonText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 16, // Increased from 12
+    fontWeight: '600', // Increased from 500
+  },
+  availabilityDisabledContainer: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 0,
+  },
+  availabilityDisabledText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  availabilityDisabledSubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   
   // Gallery Section
   gallerySection: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 8, // Reduced from 16
+    marginTop: -8, // Negative margin to bring it closer
   },
   galleryCard: {
     backgroundColor: 'white',
     borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     padding: 16,
   },
   galleryTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 16,
+    letterSpacing: 0.3,
   },
   
   // Photos Section
   photosSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   photosHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   photosIconContainer: {
-    marginRight: 12,
+    marginRight: 10,
   },
   photosIcon: {
     width: 32,
     height: 32,
-    backgroundColor: '#dbeafe', // bg-blue-100
+    backgroundColor: '#3b82f6', // Professional blue
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   photosIconText: {
-    fontSize: 16,
+    fontSize: 14,
+    color: 'white',
   },
   photosTitle: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#111827',
+    letterSpacing: 0.2,
   },
   
   // Videos Section Styles
   videosSection: {
-    marginTop: 16,
+    marginTop: 12,
   },
   videosHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    gap: 10,
   },
   videosIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: '#fef3c7',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#f59e0b', // Professional amber
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   videosIcon: {
-    fontSize: 12,
+    fontSize: 14,
+    color: 'white',
   },
   videosTitle: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#111827',
+    letterSpacing: 0.2,
   },
   videosList: {
-    gap: 12,
+    gap: 8,
   },
   videoContainer: {
     marginBottom: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
   videoTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
+    letterSpacing: 0.2,
   },
   videoWebViewContainer: {
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   videoWebView: {
     width: '100%',
-    height: 200,
+    height: 180,
   },
   videoLoadingContainer: {
     position: 'absolute',
@@ -2012,24 +2243,41 @@ const styles = StyleSheet.create({
   photosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
+    justifyContent: 'space-between',
+    paddingTop: 4, // Add space for lifted photos
   },
   photoItem: {
     width: '48%',
     aspectRatio: 1,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 12,
+    transform: [{ translateY: -2 }], // Lift effect
   },
   photoImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: 'transparent',
+    transform: [{ scale: 1.02 }], // Slight scale for depth
+  },
+  photoGradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
   },
   
   // Image Viewer Modal
@@ -2178,14 +2426,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  disabledButton: {
-    backgroundColor: '#d1d5db', // bg-gray-300
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
   platformIcon: {
     width: 32,
     height: 32,
@@ -2229,14 +2469,15 @@ const styles = StyleSheet.create({
   bookingModalBody: {
     maxHeight: 600,
     paddingHorizontal: 16,
+    paddingBottom: 100, // Add padding to go above bottom nav
   },
   
   // Calendar Styles
   availabilityCalendarSection: {
     backgroundColor: '#f9fafb',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    padding: 20,
+    marginBottom: 20,
   },
   availabilityCalendarHeader: {
     flexDirection: 'row',
@@ -2410,8 +2651,9 @@ const styles = StyleSheet.create({
   },
   
   packagesSection: {
-    paddingBottom: 24,
-    paddingTop: 8,
+    paddingBottom: 40,
+    paddingTop: 20,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
     fontSize: 16,
@@ -2567,21 +2809,6 @@ const styles = StyleSheet.create({
   },
   
   // Package Styles
-  packageDuration: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  packageDeliverables: {
-    marginBottom: 12,
-  },
-  packageDeliverableItem: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 2,
-    lineHeight: 16,
-  },
   noPackagesContainer: {
     alignItems: 'center',
     paddingVertical: 20,
@@ -2600,19 +2827,19 @@ const styles = StyleSheet.create({
   
   // Reviews Section Styles
   reviewsSection: {
-    marginTop: 12,
-    marginBottom: 100,
-    paddingBottom: 50,
+    marginTop: 6,
+    marginBottom: 60,
+    paddingBottom: 20,
   },
   reviewsCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 10,
+    padding: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
     borderWidth: 1,
     borderColor: '#f3f4f6',
   },
@@ -2620,28 +2847,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   reviewsTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   reviewsTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
   },
   reviewsBadge: {
     backgroundColor: '#be185d',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 24,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    minWidth: 20,
     alignItems: 'center',
   },
   reviewsBadgeText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: 'white',
   },
@@ -2649,147 +2876,234 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#be185d',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
     shadowColor: '#be185d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   rateButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: 'white',
   },
   ratingSummary: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   ratingMainStats: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   ratingNumberContainer: {
     alignItems: 'center',
     backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 10,
+    // Add 3D effects to rating numbers
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    // Add border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    padding: 12,
     width: '100%',
   },
   ratingAverage: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 6,
+    // Add 3D text effects to numbers
+    textShadowColor: 'rgba(0, 0, 0, 0.15)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   ratingStars: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 8,
-  },
-  ratingCount: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    gap: 2,
+    marginBottom: 6,
   },
   ratingDistribution: {
-    gap: 16,
+    gap: 4,
   },
   ratingBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    height: 40,
-    paddingVertical: 2,
+    gap: 4,
+    height: 24,
+    paddingVertical: 0,
   },
   ratingLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#111827',
-    width: 36,
-    height: 36,
+    width: 24,
+    height: 24,
     textAlign: 'center',
     backgroundColor: '#f8fafc',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     alignItems: 'center',
     justifyContent: 'center',
-    lineHeight: 14,
+    lineHeight: 12,
     paddingHorizontal: 2,
+    // Add 3D effects to star number labels
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // Add 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   ratingBarContainer: {
     flex: 1,
-    height: 16,
+    height: 10,
     backgroundColor: '#e5e7eb',
-    borderRadius: 8,
+    borderRadius: 5,
     overflow: 'hidden',
+    // Add 3D effects to progress bar container
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // Add border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   ratingBarFill: {
     height: '100%',
     backgroundColor: '#fbbf24',
-    borderRadius: 8,
+    borderRadius: 5,
+    // Add 3D effects to progress bar fill
+    shadowColor: '#fbbf24',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 2,
   },
   ratingBarCount: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700',
     color: '#374151',
-    width: 36,
+    width: 28,
     textAlign: 'right',
-    minWidth: 36,
+    minWidth: 28,
+    // Add 3D text effects to numbers
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   reviewsList: {
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
-    paddingTop: 12,
+    paddingTop: 16, // Increased padding
+    marginTop: 8,
+    // Add subtle background for better separation
+    backgroundColor: 'rgba(248, 250, 252, 0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 6, // Reduced from 12
   },
   reviewsListHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 12, // Increased spacing
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
   },
   reviewsListTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14, // Increased size
+    fontWeight: '700', // Bolder
     color: '#111827',
+    textAlign: 'center', // Center the text
+    flex: 1, // Take up available space
+    // Add 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   showAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4, // Increased gap
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(190, 24, 93, 0.1)',
+    // Add 3D effects
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   showAllButtonText: {
-    fontSize: 11,
+    fontSize: 11, // Slightly larger
     color: '#be185d',
-    fontWeight: '500',
+    fontWeight: '600', // Bolder
+    // Add 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   reviewsContainer: {
-    gap: 12,
+    gap: 4, // Reduced from 8
   },
   reviewItem: {
-    paddingBottom: 12,
+    paddingBottom: 12, // Increased padding
+    paddingTop: 8,
+    paddingHorizontal: 8,
+    marginBottom: 4, // Reduced from 8
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: 'rgba(243, 244, 246, 0.8)',
+    // Add subtle background for each review
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 8,
+    // Add 3D effects
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   reviewHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 6,
+    gap: 10, // Increased gap
+    marginBottom: 6, // Increased spacing
   },
   reviewerAvatar: {
-    width: 28,
+    width: 28, // Slightly larger
     height: 28,
     borderRadius: 14,
     backgroundColor: '#be185d',
+    // Add 3D effects to avatar
+    shadowColor: '#be185d',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    // Add border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   reviewerAvatarText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: 'white',
   },
@@ -2797,43 +3111,73 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewerName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 13, // Slightly larger
+    fontWeight: '700', // Bolder
     color: '#111827',
-    marginBottom: 3,
+    marginBottom: 3, // Increased spacing
+    // Add 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   reviewRating: {
     flexDirection: 'row',
     gap: 1,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   reviewDate: {
-    fontSize: 11,
+    fontSize: 11, // Slightly larger
     color: '#6b7280',
+    fontWeight: '500', // Slightly bolder
+    // Add subtle 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   reviewText: {
-    fontSize: 13,
+    fontSize: 13, // Slightly larger
     color: '#374151',
-    lineHeight: 18,
+    lineHeight: 18, // Better line height
+    // Add subtle 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   noReviewsContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: 20, // Increased padding
+    paddingHorizontal: 16,
+    // Add subtle background
+    backgroundColor: 'rgba(248, 250, 252, 0.5)',
+    borderRadius: 12,
+    marginTop: 8,
+    // Add 3D effects
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   noReviewsText: {
-    fontSize: 13,
+    fontSize: 13, // Slightly larger
     color: '#6b7280',
-    marginTop: 6,
-    marginBottom: 12,
+    marginTop: 6, // Increased spacing
+    marginBottom: 10, // Increased spacing
+    fontWeight: '500', // Slightly bolder
+    textAlign: 'center',
+    // Add subtle 3D text effects
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   firstReviewButton: {
     backgroundColor: '#be185d',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 4,
   },
   firstReviewButtonText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: 'white',
   },
@@ -2906,173 +3250,154 @@ const styles = StyleSheet.create({
   // Rating Modal Styles
   ratingModalContent: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    margin: 16,
-    maxHeight: '85%',
+    borderRadius: 16,
+    margin: 20,
+    maxHeight: '80%',
     flex: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
   ratingModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 24,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
   ratingModalTitleContainer: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 12,
   },
   ratingModalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   ratingModalSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
     fontWeight: '500',
   },
   ratingModalCloseButton: {
-    padding: 8,
-    borderRadius: 20,
+    padding: 6,
+    borderRadius: 16,
     backgroundColor: '#f9fafb',
   },
   ratingModalBody: {
     flex: 1,
-    padding: 24,
+    padding: 16,
   },
   starRatingSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
   },
   starRatingLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
   },
   starRatingContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 12,
   },
   starButton: {
-    padding: 8,
-    borderRadius: 20,
+    padding: 6,
+    borderRadius: 16,
+    // Add 3D effects to star buttons
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // Add subtle border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   ratingLabelContainer: {
     backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  ratingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    // Add 3D effects to rating label
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+    // Add border for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   reviewTextSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   reviewTextLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   reviewTextInputContainer: {
     backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    padding: 16,
+    padding: 12,
   },
   reviewTextInput: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#111827',
-    minHeight: 100,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   reviewTextCountContainer: {
     alignItems: 'flex-end',
-    marginTop: 8,
+    marginTop: 6,
   },
   reviewTextCount: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#9ca3af',
     fontWeight: '500',
-  },
-  ratingLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  reviewTextContainer: {
-    marginBottom: 16,
-  },
-  reviewTextLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  reviewTextInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#111827',
-    textAlignVertical: 'top',
-    minHeight: 80,
-  },
-  reviewTextCount: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'right',
-    marginTop: 4,
   },
   ratingErrorContainer: {
     backgroundColor: '#fef2f2',
     borderWidth: 1,
     borderColor: '#fecaca',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 12,
   },
   ratingErrorText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#dc2626',
   },
   ratingModalFooter: {
     flexDirection: 'row',
-    padding: 24,
-    gap: 12,
+    padding: 16,
+    gap: 10,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
   },
   ratingCancelButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#d1d5db',
     alignItems: 'center',
     justifyContent: 'center',
   },
   ratingCancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
   },
@@ -3082,14 +3407,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#be185d',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
     shadowColor: '#be185d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   ratingSubmitButtonDisabled: {
     backgroundColor: '#d1d5db',
@@ -3097,7 +3422,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   ratingSubmitButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: 'white',
   },
@@ -3256,19 +3581,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
-  },
-  selectedDatesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  selectedDateBadge: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   selectedDateBadgeText: {
     fontSize: 12,

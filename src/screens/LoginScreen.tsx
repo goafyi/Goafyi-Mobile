@@ -77,7 +77,7 @@ export default function LoginScreen({ navigation }: { navigation?: any }) {
   return (
     <ScrollView 
       style={styles.container} 
-      contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+      contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: insets.bottom }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Subtle Background Pattern */}
@@ -220,7 +220,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   backgroundPattern: {
     position: 'absolute',
@@ -261,72 +262,76 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 380,
     alignSelf: 'center',
     zIndex: 10,
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
+    marginTop: 20,
   },
   logoContainer: {
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   logoWrapper: {
-    width: 80,
-    height: 80,
+    width: 200,
+    height: 200,
     backgroundColor: 'white',
-    borderRadius: 16,
+    borderRadius: 40,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
     borderColor: '#fce7f3', // border-rose-100
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
-    width: 48,
-    height: 48,
+    width: 190,
+    height: 190,
     resizeMode: 'contain',
   },
   title: {
-    fontSize: 30,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#111827', // text-gray-900
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   subtitle: {
     color: '#6b7280', // text-gray-600
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
   },
   formCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // bg-white/80 backdrop-blur-sm
-    borderRadius: 24, // rounded-3xl
+    backgroundColor: 'white',
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-    padding: 32, // p-8
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)', // border-white/50
+    borderColor: '#f3f4f6',
   },
   form: {
-    gap: 24, // space-y-6
+    gap: 16,
   },
   inputContainer: {
-    gap: 8, // mb-2
+    gap: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#374151', // text-gray-700
+    marginBottom: 2,
   },
   inputWrapper: {
     position: 'relative',
@@ -340,60 +345,61 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    paddingLeft: 40, // pl-10
-    paddingRight: 16, // pr-4
-    paddingVertical: 12, // py-3
-    fontSize: 16, // text-base
-    borderRadius: 12, // rounded-xl
+    paddingLeft: 40,
+    paddingRight: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#d1d5db', // border-gray-300
-    backgroundColor: 'white',
-    color: '#111827', // text-gray-900
-    // focus styles handled by React Native
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+    color: '#111827',
   },
   errorContainer: {
-    backgroundColor: '#fef2f2', // bg-red-50
+    backgroundColor: '#fef2f2',
     borderWidth: 1,
-    borderColor: '#fecaca', // border-red-200
-    borderRadius: 12, // rounded-xl
-    padding: 12, // p-3
+    borderColor: '#fecaca',
+    borderRadius: 8,
+    padding: 10,
   },
   errorText: {
-    fontSize: 14,
-    color: '#dc2626', // text-red-600
+    fontSize: 13,
+    color: '#dc2626',
+    textAlign: 'center',
   },
   submitButton: {
     width: '100%',
-    backgroundColor: '#be185d', // bg-gradient-to-r from-rose-600 to-rose-700
-    borderRadius: 12, // rounded-xl
-    paddingVertical: 12, // py-3
+    backgroundColor: '#be185d',
+    borderRadius: 10,
+    paddingVertical: 14,
     alignItems: 'center',
     shadowColor: '#be185d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   submitButtonText: {
     color: 'white',
-    fontSize: 16, // text-base
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   toggleContainer: {
-    marginTop: 24, // mt-6
+    marginTop: 16,
     alignItems: 'center',
   },
   toggleText: {
-    color: '#6b7280', // text-gray-600
-    fontSize: 16,
+    color: '#6b7280',
+    fontSize: 14,
   },
   toggleLink: {
-    color: '#be185d', // text-rose-600
-    fontWeight: '500',
-    marginTop: 4, // mt-1
-    fontSize: 16,
+    color: '#be185d',
+    fontWeight: '600',
+    marginTop: 4,
+    fontSize: 14,
   },
 });

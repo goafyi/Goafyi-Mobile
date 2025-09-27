@@ -1,7 +1,7 @@
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 import React from 'react';
-import { View } from 'react-native';
+import { View, ScrollView, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -34,6 +34,7 @@ function AuthStack() {
 function MainApp() {
   const [currentScreen, setCurrentScreen] = React.useState('home');
   const [selectedVendorId, setSelectedVendorId] = React.useState<string | null>(null);
+  const [refreshing, setRefreshing] = React.useState(false);
 
   const handleNavigate = (screen: string, vendorId?: string) => {
     console.log('handleNavigate called with:', screen, vendorId);
@@ -45,6 +46,27 @@ function MainApp() {
       setSelectedVendorId(null);
     }
   };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    
+    try {
+      // Clear all caches
+      const { VendorService } = await import('./src/services/vendorService');
+      const { RatingService } = await import('./src/services/ratingService');
+      const { CacheManager } = await import('./src/lib/cacheManager');
+      
+      await VendorService.clearAllVendorCache();
+      await RatingService.clearAllCache();
+      await CacheManager.clearAllCaches();
+      
+      console.log('✅ App refreshed - all caches cleared');
+    } catch (error) {
+      console.error('❌ Error refreshing app:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
       const renderScreen = () => {
         switch (currentScreen) {
@@ -77,7 +99,20 @@ function MainApp() {
   return (
     <View style={{ flex: 1 }}>
       <Header currentRoute={currentScreen} onNavigate={handleNavigate} />
-      {renderScreen()}
+      <ScrollView
+        style={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#be185d"
+            colors={['#be185d']}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {renderScreen()}
+      </ScrollView>
       <BottomNav currentRoute={currentScreen} onNavigate={handleNavigate} />
     </View>
   );

@@ -79,6 +79,7 @@ export interface Database {
           website: string | null
           social_media: Record<string, any> | null
           availability: Record<string, any> | null
+          availability_enabled: boolean
           created_at: string
           updated_at: string
         }
@@ -100,6 +101,7 @@ export interface Database {
           website?: string | null
           social_media?: Record<string, any> | null
           availability?: Record<string, any> | null
+          availability_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -121,6 +123,7 @@ export interface Database {
           website?: string | null
           social_media?: Record<string, any> | null
           availability?: Record<string, any> | null
+          availability_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -228,6 +231,114 @@ export interface Database {
           request_id?: string
           event_date?: string
           created_at?: string
+        }
+      }
+      availability_settings: {
+        Row: {
+          id: string
+          vendor_id: string
+          slots_per_day: number
+          days_off: Record<string, boolean>
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          vendor_id: string
+          slots_per_day: number
+          days_off: Record<string, boolean>
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          vendor_id?: string
+          slots_per_day?: number
+          days_off?: Record<string, boolean>
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      blocked_dates: {
+        Row: {
+          id: string
+          vendor_id: string
+          date: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          vendor_id: string
+          date: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          vendor_id?: string
+          date?: string
+          reason?: string | null
+          created_at?: string
+        }
+      }
+      packages: {
+        Row: {
+          id: string
+          vendor_id: string
+          title: string
+          pricing_type: 'fixed' | 'per_person'
+          price: number | null
+          price_per_person: number | null
+          min_persons: number | null
+          duration_label: string
+          deliverables: string[]
+          terms: string
+          package_extras: Array<{
+            name: string
+            available_qty: number | null
+            price_per_unit: number | null
+          }>
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          vendor_id: string
+          title: string
+          pricing_type: 'fixed' | 'per_person'
+          price?: number | null
+          price_per_person?: number | null
+          min_persons?: number | null
+          duration_label: string
+          deliverables: string[]
+          terms: string
+          package_extras: Array<{
+            name: string
+            available_qty: number | null
+            price_per_unit: number | null
+          }>
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          vendor_id?: string
+          title?: string
+          pricing_type?: 'fixed' | 'per_person'
+          price?: number | null
+          price_per_person?: number | null
+          min_persons?: number | null
+          duration_label?: string
+          deliverables?: string[]
+          terms?: string
+          package_extras?: Array<{
+            name: string
+            available_qty: number | null
+            price_per_unit: number | null
+          }>
+          created_at?: string
+          updated_at?: string
         }
       }
       messages: {

@@ -106,7 +106,11 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
   return (
     <>
       <View style={styles.container}>
-        <View style={styles.buttonRow}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.buttonRow}
+        >
           {/* All button */}
           <TouchableOpacity
             onPress={() => onSelectCategory('All')}
@@ -128,7 +132,7 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
             onPress={() => setShowCategoryList(true)}
             style={[styles.button, styles.buttonInactive]}
           >
-            <List size={12} color="#6b7280" />
+            <List size={10} color="#6b7280" />
             <Text style={styles.buttonTextInactive}>Categories</Text>
           </TouchableOpacity>
 
@@ -179,7 +183,7 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
               Location
             </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
 
       {/* Category List Modal */}
@@ -383,30 +387,32 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
-    borderRadius: 12, // rounded-xl
-    padding: 12, // p-3
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e5e7eb', // border-gray-200
+    backgroundColor: 'transparent',
+    borderRadius: 0, // No border radius since it's inside another container
+    padding: 0, // No padding since parent handles it
+    marginHorizontal: 0, // Remove horizontal margin since parent handles it
   },
   buttonRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6, // gap-1.5
     alignItems: 'center',
+    paddingHorizontal: 2,
+    gap: 3,
   },
   button: {
-    paddingHorizontal: 12, // px-3
-    paddingVertical: 6, // py-1.5
-    borderRadius: 8, // rounded-lg
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6, // gap-1.5
+    gap: 3,
+    minHeight: 28,
+    maxWidth: 100,
+    flexShrink: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   buttonActive: {
     backgroundColor: '#be185d', // bg-rose-600
@@ -431,8 +437,9 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb', // border-gray-200
   },
   buttonText: {
-    fontSize: 12, // text-xs
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   buttonTextActive: {
     color: 'white',
