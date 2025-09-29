@@ -1,0 +1,42 @@
+export default {
+  expo: {
+    name: "Goa FYI",
+    slug: "goa-fyi-mobile",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/logo.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    scheme: "goafyi",
+    ios: {
+      supportsTablet: true
+    },
+    android: {
+      package: "com.goafyi.mobile",
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#ffffff"
+      },
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      minSdkVersion: 21,
+      targetSdkVersion: 34,
+      compileSdkVersion: 34,
+      permissions: [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      buildType: "apk"
+    },
+    web: {
+      favicon: "./assets/favicon.png"
+    },
+    extra: {
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    }
+  }
+};
