@@ -76,6 +76,8 @@ function MainApp() {
             return <SignupScreen navigation={{ navigate: handleNavigate, goBack: () => setCurrentScreen('home') }} />;
           case 'account':
             return <AccountScreen />;
+          case 'account/profile':
+            return <AccountScreen />;
           case 'account/dashboard':
             return <VendorDashboardScreen navigation={{ navigate: handleNavigate }} />;
           case 'account/availability':
@@ -96,9 +98,14 @@ function MainApp() {
         }
       };
 
+  // Hide header for vendor screens (dashboard, availability, bookings, profile)
+  const vendorScreens = ['account/dashboard', 'account/availability', 'account/bookings', 'account/profile', 'vendor-profile'];
+  const shouldShowHeader = !vendorScreens.includes(currentScreen);
+  const shouldShowBottomNav = true; // Always show bottom nav
+
   return (
     <View style={{ flex: 1 }}>
-      <Header currentRoute={currentScreen} onNavigate={handleNavigate} />
+      {shouldShowHeader && <Header currentRoute={currentScreen} onNavigate={handleNavigate} />}
       <ScrollView
         style={{ flex: 1 }}
         refreshControl={
@@ -113,7 +120,7 @@ function MainApp() {
       >
         {renderScreen()}
       </ScrollView>
-      <BottomNav currentRoute={currentScreen} onNavigate={handleNavigate} />
+      {shouldShowBottomNav && <BottomNav currentRoute={currentScreen} onNavigate={handleNavigate} />}
     </View>
   );
 }

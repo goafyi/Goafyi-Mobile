@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { X, List, ChevronUp, ChevronDown, MapPin, Star } from 'lucide-react-native';
 import { CATEGORIES } from '../constants';
 import { VendorService } from '../services/vendorService';
@@ -132,8 +132,12 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
             onPress={() => setShowCategoryList(true)}
             style={[styles.button, styles.buttonInactive]}
           >
-            <List size={10} color="#6b7280" />
-            <Text style={styles.buttonTextInactive}>Categories</Text>
+            <Text style={[
+              styles.buttonText,
+              styles.buttonTextInactive
+            ]}>
+              Categories
+            </Text>
           </TouchableOpacity>
 
           {/* Sort button */}
@@ -205,7 +209,7 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.simpleModalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.simpleModalBody} showsVerticalScrollIndicator={false} contentContainerStyle={styles.categoryScrollContent}>
               <View style={styles.simpleCategoryGrid}>
                 {['All', 'Catering', 'Makeup Artist', 'Solo Artist', 'Wedding Planner', 'Photographer', 'DJ', 'Decorator', 'Florist', 'Venue', 'Band', 'Emcee', 'Cameraman', 'Suit Designer', 'Gown Designer', 'Bridesmaid Dresses', 'Best Man Suits', 'Accessories', 'Bar Services'].map((category) => (
                   <TouchableOpacity
@@ -345,7 +349,7 @@ export function CategoryCarousel({ activeCategory, onSelectCategory }: CategoryC
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.simpleModalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.simpleModalBody} showsVerticalScrollIndicator={false} contentContainerStyle={styles.locationScrollContent}>
               <View style={styles.locationContent}>
                 {Object.entries(goaLocations).map(([district, talukas]) => (
                   <View key={district} style={styles.districtSection}>
@@ -395,23 +399,24 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 2,
-    gap: 3,
+    paddingHorizontal: 1,
+    gap: 8,
   },
   button: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 6 : 8,
+    paddingVertical: Dimensions.get('window').width < 375 ? 4 : 5,
+    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    minHeight: 28,
-    maxWidth: 100,
+    justifyContent: 'center',
+    gap: 0,
+    minHeight: Dimensions.get('window').width < 375 ? 24 : 26,
+    minWidth: Dimensions.get('window').width < 375 ? 50 : 60,
     flexShrink: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 1,
     elevation: 1,
   },
   buttonActive: {
@@ -437,9 +442,12 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb', // border-gray-200
   },
   buttonText: {
-    fontSize: 11,
+    fontSize: Dimensions.get('window').width < 375 ? 10 : 11,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   buttonTextActive: {
     color: 'white',
@@ -602,57 +610,65 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 50,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 12 : 16,
+    paddingVertical: Dimensions.get('window').width < 375 ? 40 : 50,
   },
   simpleModalContent: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 16,
     width: '100%',
-    maxHeight: '80%',
+    maxHeight: Dimensions.get('window').width < 375 ? '75%' : '70%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
   },
   simpleModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 16 : 20,
+    paddingVertical: Dimensions.get('window').width < 375 ? 12 : 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   simpleModalTitle: {
-    fontSize: 18,
+    fontSize: Dimensions.get('window').width < 375 ? 16 : 18,
     fontWeight: '600',
     color: '#111827',
   },
   simpleCloseButton: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 6,
   },
   simpleModalBody: {
-    maxHeight: 400,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    maxHeight: Dimensions.get('window').width < 375 ? 300 : 350,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 16 : 20,
+    paddingVertical: Dimensions.get('window').width < 375 ? 12 : 16,
+    paddingBottom: Dimensions.get('window').width < 375 ? 24 : 32,
+  },
+  categoryScrollContent: {
+    paddingBottom: Dimensions.get('window').width < 375 ? 24 : 32,
   },
   simpleCategoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 4,
   },
   simpleCategoryButton: {
-    width: '48%',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    width: Dimensions.get('window').width < 375 ? '47%' : '48%',
+    paddingVertical: Dimensions.get('window').width < 375 ? 8 : 10,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 10 : 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Dimensions.get('window').width < 375 ? 4 : 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     backgroundColor: '#f9fafb',
+    minHeight: Dimensions.get('window').width < 375 ? 36 : 40,
+    justifyContent: 'center',
   },
   simpleCategoryButtonActive: {
     backgroundColor: '#be185d',
@@ -663,10 +679,12 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   simpleCategoryButtonText: {
-    fontSize: 14,
+    fontSize: Dimensions.get('window').width < 375 ? 12 : 13,
     fontWeight: '500',
     color: '#374151',
     textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   simpleCategoryButtonTextActive: {
     color: 'white',
@@ -677,19 +695,21 @@ const styles = StyleSheet.create({
   simpleOptionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: Dimensions.get('window').width < 375 ? 10 : 12,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 12 : 14,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: Dimensions.get('window').width < 375 ? 4 : 6,
     backgroundColor: '#f9fafb',
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    gap: 12,
+    gap: Dimensions.get('window').width < 375 ? 8 : 10,
+    minHeight: Dimensions.get('window').width < 375 ? 40 : 44,
   },
   simpleOptionText: {
-    fontSize: 16,
+    fontSize: Dimensions.get('window').width < 375 ? 14 : 15,
     fontWeight: '500',
     color: '#374151',
+    includeFontPadding: false,
   },
   simpleDistanceDisplay: {
     alignItems: 'center',
@@ -731,46 +751,51 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   // Location styles
+  locationScrollContent: {
+    paddingBottom: Dimensions.get('window').width < 375 ? 32 : 40,
+  },
   locationContent: {
-    gap: 20,
+    gap: Dimensions.get('window').width < 375 ? 12 : 16,
   },
   districtSection: {
-    marginBottom: 16,
+    marginBottom: Dimensions.get('window').width < 375 ? 8 : 12,
   },
   districtTitle: {
-    fontSize: 18,
+    fontSize: Dimensions.get('window').width < 375 ? 16 : 18,
     fontWeight: '700',
     color: '#be185d',
-    marginBottom: 12,
-    paddingBottom: 8,
+    marginBottom: Dimensions.get('window').width < 375 ? 6 : 8,
+    paddingBottom: Dimensions.get('window').width < 375 ? 4 : 6,
     borderBottomWidth: 2,
     borderBottomColor: '#fce7f3',
   },
   talukaSection: {
-    marginBottom: 16,
-    paddingLeft: 8,
+    marginBottom: Dimensions.get('window').width < 375 ? 8 : 12,
+    paddingLeft: Dimensions.get('window').width < 375 ? 4 : 6,
   },
   talukaTitle: {
-    fontSize: 16,
+    fontSize: Dimensions.get('window').width < 375 ? 14 : 16,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
-    paddingLeft: 8,
+    marginBottom: Dimensions.get('window').width < 375 ? 4 : 6,
+    paddingLeft: Dimensions.get('window').width < 375 ? 4 : 6,
   },
   placesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    paddingLeft: 16,
+    gap: Dimensions.get('window').width < 375 ? 4 : 6,
+    paddingLeft: Dimensions.get('window').width < 375 ? 8 : 12,
   },
   placeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 6,
+    paddingVertical: Dimensions.get('window').width < 375 ? 4 : 6,
+    paddingHorizontal: Dimensions.get('window').width < 375 ? 8 : 10,
+    borderRadius: 6,
+    marginBottom: Dimensions.get('window').width < 375 ? 3 : 4,
     borderWidth: 1,
-    minWidth: 80,
+    minWidth: Dimensions.get('window').width < 375 ? 65 : 75,
     alignItems: 'center',
+    minHeight: Dimensions.get('window').width < 375 ? 28 : 32,
+    justifyContent: 'center',
   },
   placeButtonActive: {
     backgroundColor: '#be185d',
@@ -781,9 +806,11 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   placeButtonText: {
-    fontSize: 12,
+    fontSize: Dimensions.get('window').width < 375 ? 10 : 11,
     fontWeight: '500',
     textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   placeButtonTextActive: {
     color: 'white',

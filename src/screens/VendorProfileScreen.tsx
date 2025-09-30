@@ -653,82 +653,148 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
   console.log('VendorProfileScreen: Rendering main content, vendor:', !!vendor, 'loading:', loading, 'error:', error);
 
   return (
-    <View style={[styles.container, { paddingTop: 0 }]}>
-      <ScrollView style={[styles.scrollView, { paddingBottom: 300 }]} showsVerticalScrollIndicator={false}>
-        {/* Cover Photo with back button */}
-        <View style={styles.coverContainer}>
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header Section with Background */}
+        <View style={styles.headerSection}>
           <Image 
             source={{ uri: coverImage }}
-            style={styles.coverImage}
+            style={styles.headerBackground}
             resizeMode="cover"
           />
-          <View style={styles.coverOverlay} />
+          <View style={styles.headerOverlay} />
           
-          {/* Back button positioned on cover image */}
-          <TouchableOpacity
-            style={styles.coverBackButton}
-            onPress={() => navigation?.goBack()}
-          >
-            <ArrowLeft size={20} color="#374151" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <Animated.View style={[styles.profileCard, { opacity: cardOpacity }]}>
-            {/* Profile Picture */}
-            <View style={styles.profilePictureContainer}>
-              <Animated.View 
-                style={[
-                  styles.profilePicture,
-                  {
-                    transform: [{ scale: profilePictureScale }],
-                    opacity: cardOpacity,
-                  }
-                ]}
-              >
-                {vendor.user?.avatar_url ? (
-                  <Image
-                    source={{ uri: ImageService.getProfilePictureUrl(vendor.user.avatar_url) }}
-                    style={styles.profileImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.profileImagePlaceholder}>
-                    <Text style={styles.profileImageText}>
-                      {(vendor.business_name || vendor.user?.full_name || 'V').charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </Animated.View>
-              <Text style={styles.businessName}>
-                {vendor.business_name}
-              </Text>
-              <Text style={styles.fullName}>
-                {vendor.user?.full_name || ''}
-              </Text>
-              
-              {/* Rating Display */}
-              <View style={styles.ratingContainer}>
-                {ratingStats && ratingStats.total_ratings > 0 ? (
-                  <>
-                    {renderStars(Math.round(ratingStats.average_rating), 'sm')}
-                    <Text style={styles.ratingText}>
-                      {ratingStats.average_rating.toFixed(1)}
-                    </Text>
-                    <Text style={styles.ratingCount}>
-                      ({ratingStats.total_ratings} {ratingStats.total_ratings === 1 ? 'rating' : 'ratings'})
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    {renderStars(0, 'sm')}
-                    <Text style={styles.ratingText}>0.0</Text>
-                    <Text style={styles.ratingCount}>(0 ratings)</Text>
-                  </>
-                )}
+          {/* Header Icons */}
+          <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.headerIcon}>
+              <MessageCircle size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIcon}>
+              <Share2 size={24} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Profile Picture */}
+          <View style={styles.profilePictureContainer}>
+            {vendor.user?.avatar_url ? (
+              <Image
+                source={{ uri: ImageService.getProfilePictureUrl(vendor.user.avatar_url) }}
+                style={styles.profilePicture}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.profilePicturePlaceholder}>
+                <Text style={styles.profilePictureText}>
+                  {(vendor.business_name || vendor.user?.full_name || 'V').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          {/* User Info */}
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{vendor.business_name}</Text>
+            <Text style={styles.userLocation}>{vendor.location || 'Location'}</Text>
+          </View>
+          
+          {/* Connections */}
+          <View style={styles.connectionsContainer}>
+            <View style={styles.connectionAvatars}>
+              <View style={styles.connectionAvatar}>
+                <Text style={styles.connectionInitial}>A</Text>
+              </View>
+              <View style={styles.connectionAvatar}>
+                <Text style={styles.connectionInitial}>B</Text>
+              </View>
+              <View style={styles.connectionAvatar}>
+                <Text style={styles.connectionInitial}>+12</Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* Statistics Section */}
+        <View style={styles.statisticsSection}>
+          <View style={styles.statisticsCard}>
+            <View style={styles.statisticItem}>
+              <Text style={styles.statisticNumber}>1,250</Text>
+              <Text style={styles.statisticLabel}>Activities</Text>
+            </View>
+            <View style={styles.statisticDivider} />
+            <View style={styles.statisticItem}>
+              <Text style={styles.statisticNumber}>239</Text>
+              <Text style={styles.statisticLabel}>Experiences</Text>
+            </View>
+            <View style={styles.statisticDivider} />
+            <View style={styles.statisticItem}>
+              <Text style={styles.statisticNumber}>125</Text>
+              <Text style={styles.statisticLabel}>Followers</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* My Activities Section */}
+        <View style={styles.activitiesSection}>
+          <Text style={styles.activitiesTitle}>My Activities</Text>
+          
+          {/* Activity Cards */}
+          <View style={styles.activityCard}>
+            <Image 
+              source={{ uri: coverImage }}
+              style={styles.activityImage}
+              resizeMode="cover"
+            />
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>Valley of the king & beyond</Text>
+              <Text style={styles.activityLocation}>Giza</Text>
+              <View style={styles.activityDate}>
+                <Calendar size={14} color="#9ca3af" />
+                <Text style={styles.activityDateText}>17/08/2019</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.activityAction}>
+              <Calendar size={20} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.activityCard}>
+            <Image 
+              source={{ uri: coverImage }}
+              style={styles.activityImage}
+              resizeMode="cover"
+            />
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>Beaches of carribean</Text>
+              <Text style={styles.activityLocation}>Bahamas</Text>
+              <View style={styles.activityDate}>
+                <Calendar size={14} color="#9ca3af" />
+                <Text style={styles.activityDateText}>17/08/2019</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.activityAction}>
+              <Calendar size={20} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.activityCard}>
+            <Image 
+              source={{ uri: coverImage }}
+              style={styles.activityImage}
+              resizeMode="cover"
+            />
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>Killing the mountain</Text>
+              <Text style={styles.activityLocation}>Mountain Peak</Text>
+              <View style={styles.activityDate}>
+                <Calendar size={14} color="#9ca3af" />
+                <Text style={styles.activityDateText}>17/08/2019</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.activityAction}>
+              <Calendar size={20} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
             {/* Business Categories */}
             {vendor.category && (
@@ -799,61 +865,6 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
               )}
             </View>
 
-            {/* Instagram & WhatsApp Buttons */}
-            <View style={styles.placeholderButtonsContainer}>
-              {/* Instagram Button - Left side */}
-              <TouchableOpacity
-                style={[
-                  styles.instagramPlaceholderButton,
-                  !vendor.social_media?.instagram && styles.disabledButton
-                ]}
-                onPress={vendor.social_media?.instagram ? handleInstagramContact : undefined}
-                disabled={!vendor.social_media?.instagram}
-              >
-                <Instagram size={16} color="white" />
-                <Text style={styles.placeholderButtonText}>Instagram</Text>
-              </TouchableOpacity>
-              
-              {/* WhatsApp Button - Right side */}
-              <TouchableOpacity
-                style={[
-                  styles.whatsappPlaceholderButton,
-                  !vendor.contact_phone && styles.disabledButton
-                ]}
-                onPress={vendor.contact_phone ? handleWhatsAppContact : undefined}
-                disabled={!vendor.contact_phone}
-              >
-                <MessageSquare size={16} color="white" />
-                <Text style={styles.placeholderButtonText}>WhatsApp</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Availability & Pricing Button - Only show if availability is enabled */}
-            {availabilityEnabled ? (
-              <View style={styles.availabilityButtonContainer}>
-                <TouchableOpacity
-                  style={styles.availabilityButton}
-                  onPress={() => {
-                    loadPackagesAndAvailability();
-                    setShowBookingModal(true);
-                  }}
-                >
-                  <Calendar size={14} color="white" />
-                  <DollarSign size={14} color="white" />
-                  <Text style={styles.availabilityButtonText}>Availability & Pricing</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.availabilityDisabledContainer}>
-                <Calendar size={20} color="#9ca3af" />
-                <Text style={styles.availabilityDisabledText}>Availability Currently Disabled</Text>
-                <Text style={styles.availabilityDisabledSubtext}>
-                  This vendor has temporarily disabled their availability
-                </Text>
-              </View>
-            )}
-          </Animated.View>
-        </View>
 
         {/* Gallery - Photos & Videos */}
         {((vendor.portfolio_images && vendor.portfolio_images.length > 0) || (vendor.portfolio_videos && vendor.portfolio_videos.length > 0)) && (
@@ -1507,7 +1518,7 @@ export default function VendorProfileScreen({ vendorId, navigation }: VendorProf
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb', // bg-gray-50
+    backgroundColor: '#ffffff',
   },
   scrollView: {
     flex: 1,
@@ -1608,48 +1619,60 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(243, 244, 246, 0.8)', // bg-gray-100/80 backdrop-blur-sm
   },
   
-  // Profile Section
-  profileSection: {
+  // Header Section
+  headerSection: {
+    height: 280,
     position: 'relative',
-    marginTop: -64, // -mt-16
-    paddingHorizontal: 16,
-    paddingBottom: 24,
   },
-  profileCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 14, // Further reduced from 18
+  headerBackground: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  headerIcons: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Profile Picture Section
   profilePictureContainer: {
     alignItems: 'center',
-    marginBottom: 14, // Further reduced from 18
+    marginTop: 60,
+    zIndex: 10,
   },
   profilePicture: {
-    width: 140, // Even larger for more prominence
-    height: 140,
-    borderRadius: 70,
-    marginTop: -70,
-    // Much stronger 3D shadows
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: '#ffffff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.4,
-    shadowRadius: 30,
-    elevation: 25,
-    // Thick border with gradient effect
-    borderWidth: 6,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    overflow: 'hidden',
-    // Add rotation and scale for 3D effect
-    transform: [{ rotateY: '8deg' }, { scale: 1.05 }],
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   profileImage: {
     width: '100%',
@@ -1677,28 +1700,154 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
-  businessName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1f2937',
-    marginTop: 12, // Further reduced from 16
-    textAlign: 'center',
-    // Add text shadow for depth
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    letterSpacing: 0.5,
+  // User Info
+  userInfo: {
+    alignItems: 'center',
+    marginTop: 16,
+    zIndex: 10,
   },
-  fullName: {
-    fontSize: 18,
-    color: '#6b7280',
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#ffffff',
     textAlign: 'center',
+    marginBottom: 4,
+  },
+  userLocation: {
+    fontSize: 16,
+    color: '#ffffff',
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+  
+  // Connections
+  connectionsContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    zIndex: 10,
+  },
+  connectionAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  connectionAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -8,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  connectionInitial: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  
+  // Statistics Section
+  statisticsSection: {
+    paddingHorizontal: 20,
+    marginTop: -20,
+    zIndex: 20,
+  },
+  statisticsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  statisticItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statisticNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  statisticLabel: {
+    fontSize: 14,
+    color: '#6b7280',
     fontWeight: '500',
-    marginTop: 2, // Reduced from 4
-    // Add subtle text shadow
-    textShadowColor: 'rgba(0, 0, 0, 0.05)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+  },
+  statisticDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: 20,
+  },
+  
+  // Activities Section
+  activitiesSection: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  activitiesTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  activityCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  activityImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  activityLocation: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  activityDate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  activityDateText: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginLeft: 4,
+  },
+  activityAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Rating Section

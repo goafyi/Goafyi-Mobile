@@ -104,7 +104,7 @@ export function BottomNav({ currentRoute = 'home', onNavigate }: BottomNavProps)
           id: 'account', 
           label: 'Profile', 
           icon: User,
-          route: 'account'
+          route: 'account/profile'
         }
       ];
 
@@ -126,8 +126,8 @@ export function BottomNav({ currentRoute = 'home', onNavigate }: BottomNavProps)
             >
               <View style={styles.iconContainer}>
                 <IconComponent 
-                  size={16} // w-4 h-4
-                  color={active ? '#be185d' : '#9ca3af'} // rose-600 : gray-400
+                  size={18}
+                  color={active ? '#10b981' : '#6b7280'}
                 />
                 {active && (
                   <View style={styles.activeIndicator} />
@@ -157,13 +157,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', // bg-white/95
+    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6', // border-gray-100
-    paddingVertical: 4, // py-1
-    paddingHorizontal: 12, // px-3
+    borderTopColor: '#e5e7eb',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
@@ -172,72 +172,92 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    maxWidth: 400, // max-w-md
+    maxWidth: 400,
     alignSelf: 'center',
   },
   navItem: {
     alignItems: 'center',
-    paddingVertical: 6, // py-1.5
-    paddingHorizontal: 8, // px-2
-    borderRadius: 12, // rounded-xl
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
+    minHeight: 50,
   },
   navItemActive: {
-    backgroundColor: 'rgba(190, 24, 93, 0.1)', // bg-rose-50/80
-    transform: [{ scale: 1.05 }], // scale-105
+    backgroundColor: '#f0fdf4',
+    transform: [{ scale: 1.02 }],
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   navItemInactive: {
     backgroundColor: 'transparent',
   },
   iconContainer: {
     position: 'relative',
-    marginBottom: 2, // mt-0.5
+    marginBottom: 2,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   icon: {
     // Icon styling handled by lucide-react-native
   },
   iconActive: {
-    color: '#be185d', // text-rose-600
+    color: '#10b981',
   },
   iconInactive: {
-    color: '#9ca3af', // text-gray-400
+    color: '#6b7280',
   },
   label: {
-    fontSize: 10, // text-[10px]
-    fontWeight: '500',
-    marginTop: 2, // mt-0.5
-    lineHeight: 12, // leading-tight
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 1,
+    lineHeight: 12,
+    textAlign: 'center',
   },
   labelActive: {
-    color: '#be185d', // text-rose-600
+    color: '#10b981',
   },
   labelInactive: {
-    color: '#9ca3af', // text-gray-400
+    color: '#6b7280',
   },
   badge: {
     position: 'absolute',
-    top: -4, // -top-1
-    right: -4, // -right-1
-    backgroundColor: '#ef4444', // bg-red-500
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
     borderRadius: 8,
-    minWidth: 16, // w-4
-    height: 16, // h-4
+    minWidth: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ffffff',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   badgeText: {
     color: 'white',
-    fontSize: 8, // text-[8px]
-    fontWeight: 'bold',
+    fontSize: 8,
+    fontWeight: '700',
   },
   activeIndicator: {
     position: 'absolute',
-    top: -4, // -top-1
-    right: -4, // -right-1
-    width: 8, // w-2
-    height: 8, // h-2
-    backgroundColor: '#be185d', // bg-rose-500
-    borderRadius: 4, // rounded-full
+    top: -1,
+    right: -1,
+    width: 4,
+    height: 4,
+    backgroundColor: '#10b981',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#ffffff',
   },
 });

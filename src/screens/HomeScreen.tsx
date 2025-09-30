@@ -102,19 +102,20 @@ export default function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         style={styles.categoriesContainer}
       >
-        <View className="flex-row px-4 py-2">
+        <View className="flex-row px-3 py-2">
           {CATEGORIES.map((category) => (
             <TouchableOpacity
               key={category}
               onPress={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full mr-2 ${
+              className={`px-3 py-2 rounded-full mr-2 min-h-[36px] justify-center ${
                 selectedCategory === category
                   ? 'bg-primary-600'
                   : 'bg-gray-100'
               }`}
+              style={{ minWidth: 60 }} // Ensure minimum touch target
             >
               <Text
-                className={`text-sm font-medium ${
+                className={`text-xs font-medium ${
                   selectedCategory === category
                     ? 'text-white'
                     : 'text-gray-700'
@@ -152,29 +153,33 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     backgroundColor: 'white',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    height: 36,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 6,
-    fontSize: 14,
+    marginLeft: 4,
+    fontSize: 13,
     color: '#111827',
+    fontWeight: '500',
   },
   categoriesContainer: {
     backgroundColor: 'transparent',
@@ -183,39 +188,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   welcomeTextContainer: {
     flex: 1,
   },
   welcomeSubtext: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: '#6b7280',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   welcomeName: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     backgroundColor: '#be185d',
-    borderRadius: 24,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#be185d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    overflow: 'hidden',
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
   avatarText: {
     color: 'white',
     fontWeight: '700',
-    fontSize: 18,
+    fontSize: 16,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
 });

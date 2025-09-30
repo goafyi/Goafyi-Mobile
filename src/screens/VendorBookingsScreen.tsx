@@ -395,17 +395,50 @@ export default function VendorBookingsScreen({ navigation }: VendorBookingsScree
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Bookings</Text>
+      {/* Green Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Bookings</Text>
+          <Text style={styles.headerSubtitle}>Manage your booking requests</Text>
         </View>
+      </View>
 
+      {/* Overlapping Menu Buttons */}
+      <View style={styles.overlappingMenuContainer}>
+        <View style={styles.menuButtons}>
+          <TouchableOpacity
+            style={[styles.menuButton, activeTab === 'requests' && styles.activeMenuButton]}
+            onPress={() => setActiveTab('requests')}
+          >
+            <Text style={[styles.menuButtonText, activeTab === 'requests' && styles.activeMenuButtonText]}>
+              Requests ({requests.filter(r => r.status === 'pending').length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.menuButton, activeTab === 'pending' && styles.activeMenuButton]}
+            onPress={() => setActiveTab('pending')}
+          >
+            <Text style={[styles.menuButtonText, activeTab === 'pending' && styles.activeMenuButtonText]}>
+              Pending ({requests.filter(r => r.status === 'accepted' || r.status === 'settled_offline').length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.menuButton, activeTab === 'booked' && styles.activeMenuButton]}
+            onPress={() => setActiveTab('booked')}
+          >
+            <Text style={[styles.menuButtonText, activeTab === 'booked' && styles.activeMenuButtonText]}>
+              Booked ({requests.filter(r => r.status === 'confirmed').length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.content}>
         {/* Notifications Section */}
         {notifications.length > 0 && (
           <View style={styles.notificationsSection}>
             <View style={styles.notificationsHeader}>
-              <Bell size={16} color="#2563eb" />
+              <Bell size={16} color="#10b981" />
               <Text style={styles.notificationsTitle}>Notifications</Text>
             </View>
             <View style={styles.notificationsList}>
@@ -425,34 +458,6 @@ export default function VendorBookingsScreen({ navigation }: VendorBookingsScree
             </View>
           </View>
         )}
-
-        {/* Tabs */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-            onPress={() => setActiveTab('requests')}
-          >
-            <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-              Requests ({requests.filter(r => r.status === 'pending').length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
-            onPress={() => setActiveTab('pending')}
-          >
-            <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-              Pending ({requests.filter(r => r.status === 'accepted' || r.status === 'settled_offline').length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'booked' && styles.activeTab]}
-            onPress={() => setActiveTab('booked')}
-          >
-            <Text style={[styles.tabText, activeTab === 'booked' && styles.activeTabText]}>
-              Booked ({requests.filter(r => r.status === 'confirmed').length})
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Content */}
         <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -694,7 +699,7 @@ export default function VendorBookingsScreen({ navigation }: VendorBookingsScree
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
   },
   loadingContainer: {
     flex: 1,
@@ -706,25 +711,96 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
   },
+  // Header Section
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 8, // Small padding below header
+    backgroundColor: '#10b981',
+    paddingTop: 50,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+  headerContent: {
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  overlappingMenuContainer: {
+    marginTop: -20,
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#ffffff',
     marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  menuButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  menuButton: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  activeMenuButton: {
+    backgroundColor: '#10b981',
+    borderWidth: 0,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    transform: [{ scale: 1.05 }],
+  },
+  menuButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  activeMenuButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  content: {
+    flex: 1,
+    backgroundColor: '#ffffff',
   },
   // Notifications Section
   notificationsSection: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-    borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 16,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
     marginBottom: 16,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   notificationsHeader: {
     flexDirection: 'row',
@@ -735,30 +811,37 @@ const styles = StyleSheet.create({
   notificationsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e40af',
+    color: '#10b981',
   },
   notificationsList: {
     gap: 6,
   },
   notificationItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 0,
+    borderTopLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   notificationText: {
     fontSize: 12,
-    color: '#1e40af',
+    color: '#10b981',
     marginBottom: 2,
   },
   notificationTime: {
     fontSize: 10,
-    color: '#3b82f6',
+    color: '#059669',
   },
   notificationMore: {
     fontSize: 10,
-    color: '#3b82f6',
+    color: '#059669',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -793,38 +876,47 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 100,
   },
   tabContent: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   tabTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   list: {
     gap: 12,
   },
   bookingCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   bookingHeader: {
     flexDirection: 'row',
@@ -836,14 +928,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bookingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   bookingDate: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#6b7280',
+    fontWeight: '500',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -924,16 +1017,17 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyStateText: {
-    fontSize: 18,
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#6b7280',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#9ca3af',
     textAlign: 'center',
+    fontWeight: '500',
   },
 
   // Request Detail Modal Styles

@@ -7,7 +7,7 @@ import { AvailabilityService, type AvailabilitySettingsRecord, type BlockedDateR
 import { PackageService, type PackageRecord } from '../services/packageService';
 import { BookingService, type BookingWithDetails } from '../services/bookingService';
 import { AuthService } from '../services/authService';
-import { VendorService } from '../services/vendorService';
+import { VendorService, supabase } from '../services/vendorService';
 
 interface VendorAvailabilityScreenProps {
   navigation?: any;
@@ -51,15 +51,41 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
   
   // Save availability toggle state to database
   const handleAvailabilityToggle = async (enabled: boolean) => {
-    if (!vendorId) return;
+    if (!vendorId) {
+      console.error('No vendorId available for availability toggle');
+      Alert.alert('Error', 'Vendor ID not found. Please try again.');
+      return;
+    }
     
     setSavingAvailability(true);
     try {
-      await VendorService.updateVendor(vendorId, { availability_enabled: enabled });
+      console.log('Updating availability for vendor:', vendorId, 'to:', enabled);
+      
+      // Try updating via VendorService first
+      try {
+        await VendorService.updateVendor(vendorId, { availability_enabled: enabled });
+        console.log('Availability updated via VendorService');
+      } catch (vendorError) {
+        console.error('VendorService update failed:', vendorError);
+        
+        // Fallback: Try direct Supabase update
+        console.log('Trying direct Supabase update...');
+        const { error: supabaseError } = await supabase
+          .from('vendors')
+          .update({ availability_enabled: enabled })
+          .eq('id', vendorId);
+          
+        if (supabaseError) {
+          throw supabaseError;
+        }
+        console.log('Availability updated via direct Supabase');
+      }
+      
       setAvailabilityEnabled(enabled);
+      console.log('Availability updated successfully');
     } catch (error) {
       console.error('Error updating availability state:', error);
-      Alert.alert('Error', 'Failed to update availability setting');
+      Alert.alert('Error', `Failed to update availability setting: ${error.message || 'Unknown error'}`);
     } finally {
       setSavingAvailability(false);
     }
@@ -88,13 +114,18 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
 
   useEffect(() => {
     const loadData = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.error('No user ID available');
+        return;
+      }
       
       try {
         setLoading(true);
         
         // Get vendor ID
+        console.log('Getting vendor ID for user:', user.id);
         const vendorIdResult = await AuthService.getVendorId(user.id);
+        console.log('Vendor ID result:', vendorIdResult);
         setVendorId(vendorIdResult);
         
         if (vendorIdResult) {
@@ -114,11 +145,14 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
               
               // Load bookings
               await loadBookings();
+            } else {
+              console.error('No vendor ID found for user:', user.id);
+              Alert.alert('Error', 'Vendor profile not found. Please contact support.');
             }
             
           } catch (error) {
             console.error('Error loading data:', error);
-            Alert.alert('Error', 'Failed to load data');
+            Alert.alert('Error', `Failed to load data: ${error.message || 'Unknown error'}`);
           } finally {
             setLoading(false);
           }
@@ -148,34 +182,72 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
       return;
     }
 
+    if (!vendorId) {
+      console.error('No vendorId available for blocking dates');
+      Alert.alert('Error', 'Vendor ID not found. Please try again.');
+      return;
+    }
+
+    // Filter out dates that are already blocked
+    const alreadyBlockedDates = selectedDates.filter(date => 
+      blockedDates.some(blocked => blocked.date === date)
+    );
+    
+    const newDatesToBlock = selectedDates.filter(date => 
+      !blockedDates.some(blocked => blocked.date === date)
+    );
+
+    if (newDatesToBlock.length === 0) {
+      Alert.alert('Already Blocked', 'All selected dates are already blocked');
+      return;
+    }
+
+    if (alreadyBlockedDates.length > 0) {
+      Alert.alert(
+        'Some Dates Already Blocked', 
+        `${alreadyBlockedDates.length} date(s) are already blocked. Blocking ${newDatesToBlock.length} new date(s).`
+      );
+    }
+
     try {
-      await AvailabilityService.addBlockedDates(vendorId!, selectedDates, 'Blocked by vendor');
+      console.log('Blocking dates for vendor:', vendorId, 'dates:', newDatesToBlock);
+      await AvailabilityService.addBlockedDates(vendorId, newDatesToBlock, 'Blocked by vendor');
+      
       setBlockedDates(prev => [
         ...prev,
-        ...selectedDates.map(date => ({
+        ...newDatesToBlock.map(date => ({
           id: '',
-          vendor_id: vendorId!,
+          vendor_id: vendorId,
           date,
           reason: 'Blocked by vendor',
           created_at: new Date().toISOString()
         }))
       ]);
       setSelectedDates([]);
-      Alert.alert('Success', 'Dates blocked successfully');
+      console.log('Dates blocked successfully');
+      Alert.alert('Success', `${newDatesToBlock.length} date(s) blocked successfully`);
     } catch (error) {
       console.error('Error blocking dates:', error);
-      Alert.alert('Error', 'Failed to block dates');
+      Alert.alert('Error', `Failed to block dates: ${error.message || 'Unknown error'}`);
     }
   };
 
   const handleUnblockDate = async (date: string) => {
+    if (!vendorId) {
+      console.error('No vendorId available for unblocking date');
+      Alert.alert('Error', 'Vendor ID not found. Please try again.');
+      return;
+    }
+
     try {
-      await AvailabilityService.removeBlockedDates(vendorId!, [date]);
+      console.log('Unblocking date for vendor:', vendorId, 'date:', date);
+      await AvailabilityService.removeBlockedDates(vendorId, [date]);
       setBlockedDates(prev => prev.filter(b => b.date !== date));
+      console.log('Date unblocked successfully');
       Alert.alert('Success', 'Date unblocked successfully');
     } catch (error) {
       console.error('Error unblocking date:', error);
-      Alert.alert('Error', 'Failed to unblock date');
+      Alert.alert('Error', `Failed to unblock date: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -447,9 +519,9 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#be185d" />
+          <ActivityIndicator size="large" color="#ffffff" />
           <Text style={styles.loadingText}>Loading availability...</Text>
         </View>
       </View>
@@ -458,134 +530,110 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Modern Header */}
-        <View style={styles.header}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
           <View style={styles.headerContent}>
-            <View style={styles.titleSection}>
-              <Text style={styles.title}>Availability & Packages</Text>
-              <Text style={styles.subtitle}>Manage your services and schedule</Text>
-            </View>
-            <View style={styles.statusIndicator}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Active</Text>
-            </View>
+            <Text style={styles.headerTitle}>Manage Services</Text>
+            <Text style={styles.headerSubtitle}>Packages & Availability</Text>
           </View>
         </View>
+      </View>
 
-        {/* Modern Tabs */}
-        <View style={styles.tabsContainer}>
+      {/* Overlapping Menu Buttons */}
+      <View style={styles.overlappingMenuContainer}>
+        <View style={styles.menuButtons}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'packages' && styles.activeTab]}
+            style={[styles.menuButton, activeTab === 'packages' && styles.activeMenuButton]}
             onPress={() => setActiveTab('packages')}
           >
-            <View style={[styles.tabIcon, activeTab === 'packages' && styles.activeTabIcon]}>
-              <Package size={18} color={activeTab === 'packages' ? '#ffffff' : '#6b7280'} />
-            </View>
-            <Text style={[styles.tabText, activeTab === 'packages' && styles.activeTabText]}>
+            <Text style={[styles.menuButtonText, activeTab === 'packages' && styles.activeMenuButtonText]}>
               Packages
             </Text>
-            <View style={[styles.tabBadge, activeTab === 'packages' && styles.activeTabBadge]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'packages' && styles.activeTabBadgeText]}>
-                {packages.length}
-              </Text>
-            </View>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'availability' && styles.activeTab]}
+            style={[styles.menuButton, activeTab === 'availability' && styles.activeMenuButton]}
             onPress={() => setActiveTab('availability')}
           >
-            <View style={[styles.tabIcon, activeTab === 'availability' && styles.activeTabIcon]}>
-              <Calendar size={18} color={activeTab === 'availability' ? '#ffffff' : '#6b7280'} />
-            </View>
-            <Text style={[styles.tabText, activeTab === 'availability' && styles.activeTabText]}>
+            <Text style={[styles.menuButtonText, activeTab === 'availability' && styles.activeMenuButtonText]}>
               Availability
             </Text>
-            <View style={[styles.tabBadge, activeTab === 'availability' && styles.activeTabBadge]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'availability' && styles.activeTabBadgeText]}>
-                {blockedDates.length}
-              </Text>
-            </View>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Content Area */}
+      <View style={styles.content}>
 
         {/* Content */}
         <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {activeTab === 'packages' && (
             <View style={styles.packagesSection}>
-              {/* Packages Header */}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Packages</Text>
-                <TouchableOpacity style={styles.addButton} onPress={handleCreatePackage}>
-                  <Plus size={16} color="white" />
-                  <Text style={styles.addButtonText}>Add Package</Text>
+              {/* Compact Header */}
+              <View style={styles.compactHeader}>
+                <View style={styles.headerLeft}>
+                  <Text style={styles.compactTitle}>Packages</Text>
+                  <Text style={styles.compactSubtitle}>{packages.length} active</Text>
+                </View>
+                <TouchableOpacity style={styles.compactAddButton} onPress={handleCreatePackage}>
+                  <Plus size={18} color="#ffffff" />
                 </TouchableOpacity>
               </View>
 
-              {/* Packages List */}
+              {/* Modern Packages Grid */}
               {packagesLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#be185d" />
-                  <Text style={styles.loadingText}>Loading packages...</Text>
+                <View style={styles.modernLoadingContainer}>
+                  <ActivityIndicator size="large" color="#10b981" />
+                  <Text style={styles.modernLoadingText}>Loading packages...</Text>
                 </View>
               ) : packages.length > 0 ? (
-                <View style={styles.packagesList}>
+                <View style={styles.simplePackagesGrid}>
                   {packages.map((pkg) => (
-                    <View key={pkg.id} style={styles.packageItem}>
-                      <View style={styles.packageHeader}>
-                        <Text style={styles.packageTitle}>{pkg.title}</Text>
-                        <View style={styles.packageActions}>
+                    <View key={pkg.id} style={styles.simplePackageCard}>
+                      <View style={styles.simpleCardContent}>
+                        <View style={styles.simpleIconContainer}>
+                          <Package size={20} color="#10b981" />
+                        </View>
+                        <View style={styles.simpleTextInfo}>
+                          <Text style={styles.simplePackageTitle}>{pkg.title}</Text>
+                          <Text style={styles.simplePackagePrice}>
+                            {pkg.pricing_type === 'per_person' 
+                              ? `₹${pkg.price_per_person}/person`
+                              : `₹${pkg.price?.toLocaleString()}`
+                            }
+                          </Text>
+                        </View>
+                        <View style={styles.simpleActions}>
                           <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.simpleActionButton}
                             onPress={() => handleEditPackage(pkg)}
                           >
                             <Edit3 size={16} color="#6b7280" />
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.simpleActionButton}
                             onPress={() => handleDeletePackage(pkg.id)}
                           >
                             <Trash2 size={16} color="#dc2626" />
                           </TouchableOpacity>
                         </View>
                       </View>
-                      <Text style={styles.packagePrice}>
-                        {pkg.pricing_type === 'per_person' 
-                          ? `₹${pkg.price_per_person}/person`
-                          : `₹${pkg.price?.toLocaleString()}`
-                        }
-                      </Text>
-                      {pkg.duration_label && (
-                        <Text style={styles.packageDuration}>{pkg.duration_label}</Text>
-                      )}
-                      {pkg.deliverables && pkg.deliverables.length > 0 && (
-                        <View style={styles.packageDeliverables}>
-                          <Text style={styles.deliverablesLabel}>Deliverables:</Text>
-                          <Text style={styles.deliverablesText}>{pkg.deliverables.join(', ')}</Text>
-                        </View>
-                      )}
-                      {pkg.package_extras && pkg.package_extras.length > 0 && (
-                        <View style={styles.packageExtras}>
-                          <Text style={styles.extrasLabel}>Extras:</Text>
-                          {pkg.package_extras.map((extra: any, index: number) => (
-                            <View key={index} style={styles.extraItem}>
-                              <Text style={styles.extraText}>
-                                {extra.name} 
-                                {extra.price_per_unit && ` - ₹${extra.price_per_unit}`}
-                                {extra.available_qty && ` (${extra.available_qty} available)`}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
                     </View>
                   ))}
                 </View>
               ) : (
-                <View style={styles.emptyState}>
-                  <Package size={48} color="#9ca3af" />
-                  <Text style={styles.emptyStateText}>No packages yet</Text>
-                  <Text style={styles.emptyStateSubtext}>Create your first package to get started</Text>
+                <View style={styles.modernEmptyState}>
+                  <View style={styles.emptyIconContainer}>
+                    <Package size={64} color="#10b981" />
+                  </View>
+                  <Text style={styles.modernEmptyTitle}>No Packages Yet</Text>
+                  <Text style={styles.modernEmptySubtitle}>
+                    Create your first service package to start accepting bookings
+                  </Text>
+                  <TouchableOpacity style={styles.modernEmptyButton} onPress={handleCreatePackage}>
+                    <Plus size={20} color="#ffffff" />
+                    <Text style={styles.modernEmptyButtonText}>Create Package</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -691,23 +739,31 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
         </ScrollView>
       </View>
 
-      {/* Package Modal */}
+      {/* Modern Package Modal */}
       <Modal visible={showPackageModal} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editingPackage ? 'Edit Package' : 'Create Package'}
-            </Text>
-            <TouchableOpacity onPress={() => setShowPackageModal(false)}>
-              <X size={24} color="#6b7280" />
+        <View style={styles.modernModalContainer}>
+          <View style={styles.modernModalHeader}>
+            <View style={styles.modalHeaderContent}>
+              <Text style={styles.modernModalTitle}>
+                {editingPackage ? 'Edit Package' : 'Create Package'}
+              </Text>
+              <Text style={styles.modernModalSubtitle}>
+                {editingPackage ? 'Update your package details' : 'Add a new service package'}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.modernCloseButton}
+              onPress={() => setShowPackageModal(false)}
+            >
+              <X size={20} color="#6b7280" />
             </TouchableOpacity>
           </View>
           
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Package Title</Text>
+          <ScrollView style={styles.modernModalContent}>
+            <View style={styles.modernInputGroup}>
+              <Text style={styles.modernInputLabel}>Package Title</Text>
               <TextInput
-                style={styles.input}
+                style={styles.modernInput}
                 value={packageTitle}
                 onChangeText={setPackageTitle}
                 placeholder="Enter package title"
@@ -715,22 +771,22 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Pricing Type</Text>
-              <View style={styles.radioGroup}>
+            <View style={styles.modernInputGroup}>
+              <Text style={styles.modernInputLabel}>Pricing Type</Text>
+              <View style={styles.modernRadioGroup}>
                 <TouchableOpacity
-                  style={[styles.radioButton, packagePricingType === 'fixed' && styles.radioButtonSelected]}
+                  style={[styles.modernRadioButton, packagePricingType === 'fixed' && styles.modernRadioButtonSelected]}
                   onPress={() => setPackagePricingType('fixed')}
                 >
-                  <Text style={[styles.radioText, packagePricingType === 'fixed' && styles.radioTextSelected]}>
+                  <Text style={[styles.modernRadioText, packagePricingType === 'fixed' && styles.modernRadioTextSelected]}>
                     Fixed Price
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.radioButton, packagePricingType === 'per_person' && styles.radioButtonSelected]}
+                  style={[styles.modernRadioButton, packagePricingType === 'per_person' && styles.modernRadioButtonSelected]}
                   onPress={() => setPackagePricingType('per_person')}
                 >
-                  <Text style={[styles.radioText, packagePricingType === 'per_person' && styles.radioTextSelected]}>
+                  <Text style={[styles.modernRadioText, packagePricingType === 'per_person' && styles.modernRadioTextSelected]}>
                     Per Person
                   </Text>
                 </TouchableOpacity>
@@ -869,20 +925,20 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
             </View>
           </ScrollView>
 
-          <View style={styles.modalActions}>
+          <View style={styles.modernModalActions}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={styles.modernCancelButton}
               onPress={() => setShowPackageModal(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.modernCancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.saveButton, packagesLoading && styles.saveButtonDisabled]}
+              style={[styles.modernSaveButton, packagesLoading && styles.modernSaveButtonDisabled]}
               onPress={handleSavePackage}
               disabled={packagesLoading}
             >
-              <Text style={styles.saveButtonText}>
-                {packagesLoading ? 'Saving...' : (editingPackage ? 'Update' : 'Create')}
+              <Text style={styles.modernSaveButtonText}>
+                {packagesLoading ? 'Saving...' : (editingPackage ? 'Update Package' : 'Create Package')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -895,15 +951,611 @@ export default function VendorAvailabilityScreen({ navigation }: VendorAvailabil
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ecfdf5',
+  },
+  header: {
+    backgroundColor: '#10b981',
+    paddingTop: 50,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  headerTop: {
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  overlappingMenuContainer: {
+    marginTop: -20,
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  menuButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  menuButton: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  activeMenuButton: {
+    backgroundColor: '#ffffff',
+    borderWidth: 0,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  menuButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  activeMenuButtonText: {
+    color: '#10b981',
+    fontWeight: '700',
   },
   content: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 100,
+  },
+  
+  // Compact Professional Packages Section
+  compactHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  compactTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  compactSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  compactAddButton: {
+    backgroundColor: '#10b981',
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modernLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  modernLoadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+  },
+  simplePackagesGrid: {
+    gap: 12,
+  },
+  simplePackageCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 0,
+    borderTopLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 0,
+  },
+  simpleCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  simpleIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  simpleTextInfo: {
+    flex: 1,
+  },
+  simplePackageTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  simplePackagePrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#10b981',
+  },
+  simpleActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  simpleActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 0,
+    borderTopLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  enhancedCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  enhancedPackageInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+  },
+  enhancedIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 0,
+    borderTopLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  enhancedTextInfo: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  enhancedPackageTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    flex: 1,
+  },
+  statusBadge: {
+    backgroundColor: '#10b981',
+    borderRadius: 0,
+    borderTopLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#ffffff',
+    textTransform: 'uppercase',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  enhancedPackagePrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#10b981',
+  },
+  durationLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748b',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 0,
+    borderTopLeftRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  enhancedActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  enhancedActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 0,
+    borderTopLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  enhancedCardFooter: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  enhancedInfoBadge: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 0,
+    borderTopLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  enhancedInfoText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  packageIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modernActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  cardContent: {
+    gap: 12,
+  },
+  modernPackageTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modernPrice: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#10b981',
+  },
+  durationBadge: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  durationText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  deliverablesContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  deliverablesTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  deliverablesList: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+  },
+  extrasContainer: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  extrasTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400e',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  extrasPreview: {
+    fontSize: 14,
+    color: '#92400e',
+    lineHeight: 20,
+  },
+  modernEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  modernEmptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modernEmptySubtitle: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  modernEmptyButton: {
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modernEmptyButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Modern Form Styles
+  modernModalContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  modernModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  modalHeaderContent: {
+    flex: 1,
+  },
+  modernModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  modernModalSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  modernCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modernModalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  modernInputGroup: {
+    marginBottom: 20,
+  },
+  modernInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  modernInput: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modernRadioGroup: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modernRadioButton: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modernRadioButtonSelected: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  modernRadioText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  modernRadioTextSelected: {
+    color: '#ffffff',
+  },
+  modernModalActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    paddingBottom: 40,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  modernCancelButton: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modernCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  modernSaveButton: {
+    flex: 2,
+    backgroundColor: '#10b981',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modernSaveButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  modernSaveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   loadingContainer: {
     flex: 1,
@@ -913,116 +1565,9 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
-  },
-  header: {
-    paddingVertical: 8, // Small padding below header
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  titleSection: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  statusIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0fdf4',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22c55e',
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#16a34a',
-    fontWeight: '500',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
+    color: '#ffffff',
   },
   
-  // Mobile-Friendly Tabs
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    gap: 8,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    gap: 6,
-  },
-  activeTab: {
-    backgroundColor: '#be185d',
-    borderColor: '#be185d',
-  },
-  tabIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeTabIcon: {
-    // No special styling needed
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  activeTabText: {
-    color: 'white',
-  },
-  tabBadge: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 6,
-    minWidth: 16,
-    alignItems: 'center',
-  },
-  activeTabBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  tabBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  activeTabBadgeText: {
-    color: 'white',
-  },
   
   // Packages Section
   packagesSection: {
@@ -1179,8 +1724,10 @@ const styles = StyleSheet.create({
   
   // Availability Toggle Section
   availabilityToggleSection: {
-    backgroundColor: 'white',
-    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 0,
+    borderTopLeftRadius: 20,
+    borderBottomRightRadius: 20,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
@@ -1189,7 +1736,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: '#f1f5f9',
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -1220,7 +1767,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleSwitchActive: {
-    backgroundColor: '#be185d',
+    backgroundColor: '#10b981',
   },
   toggleThumb: {
     width: 28,
@@ -1280,16 +1827,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   calendarContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(240, 253, 244, 0.95)',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -1303,19 +1850,19 @@ const styles = StyleSheet.create({
   calendarNavButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(190, 24, 93, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(190, 24, 93, 0.2)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   calendarNavText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#be185d',
+    color: '#10b981',
   },
   calendarMonthText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#10b981',
   },
   dayHeaders: {
     flexDirection: 'row',
@@ -1326,7 +1873,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: 11,
-    color: '#6b7280',
+    color: '#10b981',
     fontWeight: '600',
     paddingVertical: 4,
   },
@@ -1348,10 +1895,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   calendarDaySelected: {
-    backgroundColor: 'rgba(190, 24, 93, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     borderWidth: 2,
-    borderColor: '#be185d',
-    shadowColor: '#be185d',
+    borderColor: '#10b981',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1368,9 +1915,9 @@ const styles = StyleSheet.create({
     borderColor: '#9ca3af',
   },
   calendarDayAvailable: {
-    backgroundColor: 'rgba(34, 197, 94, 0.05)',
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.2)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   calendarDayText: {
     fontSize: 11,
@@ -1378,7 +1925,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   calendarDayTextSelected: {
-    color: '#be185d',
+    color: '#10b981',
     fontWeight: '700',
   },
   calendarDayTextBlocked: {
@@ -1467,28 +2014,42 @@ const styles = StyleSheet.create({
   selectedDateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: '#f0fdf4',
     borderWidth: 1,
-    borderColor: '#dc2626',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 4,
+    borderColor: '#10b981',
+    borderRadius: 0,
+    borderTopLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   selectedDateText: {
     fontSize: 12,
-    color: '#dc2626',
+    color: '#10b981',
     fontWeight: '500',
   },
   removeDateButton: {
     padding: 2,
   },
   blockButton: {
-    backgroundColor: '#dc2626',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: '#10b981',
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   blockButtonText: {
     color: 'white',
@@ -1506,14 +2067,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 0,
+    borderTopLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   blockedDateInfo: {
     flex: 1,
@@ -1530,9 +2095,16 @@ const styles = StyleSheet.create({
   },
   unblockButton: {
     backgroundColor: '#10b981',
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderRadius: 0,
+    borderTopLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   unblockButtonText: {
     color: 'white',
